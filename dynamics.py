@@ -5,7 +5,7 @@ import torch.linalg as linalg
 import grid_generation as grid
 from abc import ABC, abstractmethod
 
-from distributions import Gaussian, Uniform
+from distributions import Gaussian
 import probability_mass_computation as proba
 
 

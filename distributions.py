@@ -1,7 +1,10 @@
 import torch
 from torch.distributions import MultivariateNormal
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 import probability_mass_computation as proba
+from regions import HyperRectangularVoronoiPartition, HyperRectangle
+from typing import Union
+
 
 class _Distributions:
 
@@ -9,7 +12,7 @@ class _Distributions:
         pass
 
     @abstractmethod
-    def compute_regions_probabilities(self, regions: torch.Tensor):
+    def compute_probabilities(self, regions: torch.Tensor):
         pass
 
 
@@ -22,8 +25,25 @@ class Gaussian(_Distributions):
         mvn = MultivariateNormal(loc=self.mean, covariance_matrix=self.covariance)
         return mvn.sample((n_samples,))
 
-    def compute_regions_probabilities(self, regions):
-        raise NotImplementedError("Not yet implemented")
+    def compute_probabilities(self, regions: Union[HyperRectangularVoronoiPartition, HyperRectangle]):
+
+        lower = regions.lower
+        upper = regions.upper
+
+        if lower.dim() == 1:
+            lower = lower.unsqueeze(0)
+            upper = upper.unsqueeze(0)
+
+        sigma = torch.sqrt(torch.diag(self.covariance))
+
+        lower_norm = (lower - self.mean) / sigma
+        upper_norm = (upper - self.mean) / sigma
+
+        normal = torch.distributions.Normal(0.0, 1.0)
+        lower_cdf = normal.cdf(lower_norm)
+        upper_cdf = normal.cdf(upper_norm)
+
+        return torch.prod(upper_cdf - lower_cdf, dim=1)
 
 
 class GaussianMixture(_Distributions):
@@ -33,59 +53,10 @@ class GaussianMixture(_Distributions):
         self.weights = weights
 
     def __call__(self, n_samples: int):
-
         chosen_components = torch.multinomial(self.weights, n_samples, replacement=True)
-
         gaussian_distributions = MultivariateNormal(self.means, self.covariances)
         samples = gaussian_distributions.sample((n_samples,))
-
         return samples[torch.arange(n_samples), chosen_components]
 
-    def compute_regions_probabilities(self, regions):
-        signature_probas = proba.gaussian_mixture_proba_mass_inside_hypercubes(self.means, self.covariances[0], self.weights, regions)
-
-        # the remaining probability is attributed to the whole unbounded region
-        unbounded_proba = torch.Tensor([1 - signature_probas.sum()])
-        signature_probas = torch.cat((signature_probas, unbounded_proba))
-
-        return signature_probas
-
-class Uniform(_Distributions):
-    def __init__(self, center: torch.Tensor, low: torch.Tensor, high: torch.Tensor):
-        self.center = center
-        self.low = low
-        self.high = high
-
-    def __call__(self, n_samples: int):
-        uniform_dist = torch.distributions.Uniform(self.center + self.low, self.center + self.high)
-        samples = uniform_dist.sample((n_samples,))
-
-        return samples
-
-    def compute_regions_probabilities(self, regions):
-        raise NotImplementedError("Not yet implemented")
-
-class UniformMixture(_Distributions):
-    def __init__(self, centers: torch.Tensor, lows: torch.Tensor, highs: torch.Tensor, weights: torch.Tensor):
-        self.centers = centers
-        self.lows = lows
-        self.highs = highs
-        self.weights = weights
-
-    def __call__(self, n_samples: int):
-
-        chosen_components = torch.multinomial(self.weights, n_samples, replacement=True)
-
-        uniform_distributions = torch.distributions.Uniform(self.centers + self.lows, self.centers + self.highs)
-        samples = uniform_distributions.sample((n_samples,))
-
-        return samples[torch.arange(n_samples), chosen_components]
-
-    def compute_regions_probabilities(self, regions):
-        signature_probas = proba.uniform_mixture_proba_mass_inside_hypercubes(self.centers + self.lows, self.centers + self.highs, self.weights, regions)
-
-        # the remaining probability is attributed to the whole unbounded region
-        unbounded_proba = torch.Tensor([1 - signature_probas.sum()])
-        signature_probas = torch.cat((signature_probas, unbounded_proba))
-
-        return signature_probas
+    def compute_probabilities(self, regions):
+        raise NotImplementedError("Implement for new framework.")
