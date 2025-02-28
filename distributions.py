@@ -59,4 +59,10 @@ class GaussianMixture(_Distributions):
         return samples[torch.arange(n_samples), chosen_components]
 
     def compute_probabilities(self, regions):
-        raise NotImplementedError("Implement for new framework.")
+        # TODO: can be optimized
+        probs = [
+            Gaussian(mean, cov).compute_probabilities(regions)
+            for mean, cov in zip(self.means, self.covariances)
+        ]
+        probs = torch.stack(probs, dim=0)
+        return (self.weights * probs).sum(dim=-1)
