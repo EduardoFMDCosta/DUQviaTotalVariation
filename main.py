@@ -9,8 +9,6 @@ from utils import create_uniform_grid, compute_kernel_at_locs, compute_sup_inf_k
 if __name__ == '__main__':
     torch.manual_seed(0)
 
-    n_samples = int(10e5)
-
     # System parameters
     A = torch.Tensor(
         [
@@ -27,12 +25,12 @@ if __name__ == '__main__':
 
     # Noise distribution
     mean_noise = torch.Tensor([0, 0])
-    cov_noise = 0.1 * torch.eye(2)
+    cov_noise = 3. * torch.eye(2)
 
     # Prepare fixed grid
-    n = 5
+    n = 3
     locs = create_uniform_grid(torch.tensor([0, 0]), torch.tensor([10, 10]), n)
-    regions = HyperRectangularVoronoiPartition(locs) # Create a Voronoi partition w.r.t. locs
+    regions = HyperRectangularVoronoiPartition(locs) # Csreate a Voronoi partition w.r.t. locs
 
     # Define unsafe set
     unsafe_set = HyperRectangle(torch.tensor([3, 2]), torch.tensor([5, 4]))
@@ -49,8 +47,7 @@ if __name__ == '__main__':
 
     #Run simulation
     means_gmm = f(locs)
-    for t in range(1):
-
+    for t in range(30):
         # Update approximation
         approx_probs = approx_distribution.compute_probabilities(regions)
         covs_noise = cov_noise.unsqueeze(0).expand(means_gmm.size(0), -1, -1)
@@ -61,14 +58,13 @@ if __name__ == '__main__':
         beta_unsafe_set = torch.dot(sup_kernel_unsafe_set - kernel_at_locs_unsafe_set, approx_probs) + torch.dot(sup_kernel_unsafe_set, betas_regions)
 
         # TODO: This below is only needed because there is an issue with the sup/inf computation. To be checked
-        inf_diff = (inf_kernel_regions - kernel_at_locs_regions).clamp_max(0.0)
-        sup_diff = (sup_kernel_regions - kernel_at_locs_regions).clamp_min(0.0)
+        inf_diff = (inf_kernel_regions - kernel_at_locs_regions)
+        sup_diff = (sup_kernel_regions - kernel_at_locs_regions)
 
         alphas_regions = inf_diff.T @ approx_probs + inf_kernel_regions.T @ alphas_regions
         betas_regions = sup_diff.T @ approx_probs + sup_kernel_regions.T @ betas_regions
-
-        print(alpha_unsafe_set)
-        print(beta_unsafe_set)
+        
+        print("(t = {}) alpha = {}, beta = {}".format(t, alpha_unsafe_set, beta_unsafe_set))
 
 
 
