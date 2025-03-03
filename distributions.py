@@ -59,7 +59,8 @@ class GaussianMixture(_Distributions):
         return samples[torch.arange(n_samples), chosen_components]
 
     def compute_probabilities(self, regions):
-        # TODO: can be optimized
+        # TODO: can be optimized because objects are created 
+        #       each time probabilities are computed
         probs = [
             Gaussian(mean, cov).compute_probabilities(regions)
             for mean, cov in zip(self.means, self.covariances)
