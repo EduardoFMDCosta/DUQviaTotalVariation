@@ -81,6 +81,12 @@ class HyperRectangularVoronoiPartition:
         lower = self._locs + 0.5 * neg_diff.max(dim=-2).values
 
         return lower
+    
+    def set_lower(self, id, lower):
+        self._lower[id] = lower
+
+    def set_upper(self, id, upper):
+        self._upper[id] = upper
 
     @property
     def center(self):
