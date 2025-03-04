@@ -2,7 +2,7 @@ import torch
 from dynamics import LinearDynamics
 from distributions import GaussianMixture, Gaussian
 from probability_mass_computation import gaussian_proba_mass_inside_hypercubes
-from regions import HyperRectangle, HyperRectangularVoronoiPartition
+from regions import HyperRectangle, HyperRectangularPartition
 from copy import deepcopy
 from utils import create_uniform_grid, compute_kernel_at_locs, compute_sup_inf_kernel
 
@@ -17,7 +17,6 @@ if __name__ == '__main__':
         ])
     f = LinearDynamics(A)
 
-
     # Initial distribution
     mean_initial = torch.Tensor([4, 4])
     cov_initial = 0.05 * torch.eye(2)
@@ -28,12 +27,16 @@ if __name__ == '__main__':
     cov_noise = 3. * torch.eye(2)
 
     # Prepare fixed grid
-    n = 3
+    shell = torch.tensor([[-5, 15], [-5, 15]])
+    loc_shell = torch.tensor([11, 11])
+    n = 10
     locs = create_uniform_grid(torch.tensor([0, 0]), torch.tensor([10, 10]), n)
-    regions = HyperRectangularVoronoiPartition(locs) # Csreate a Voronoi partition w.r.t. locs
+    regions = HyperRectangularPartition(locs, loc_shell, shell) # Create a Voronoi partition w.r.t. locs
 
     # Define unsafe set
     unsafe_set = HyperRectangle(torch.tensor([3, 2]), torch.tensor([5, 4]))
+
+    f.compute_ibp(regions)
 
     # Kernel related quantities
     kernel_at_locs_regions, kernel_at_locs_unsafe_set = compute_kernel_at_locs(f, locs, cov_noise, regions, unsafe_set)

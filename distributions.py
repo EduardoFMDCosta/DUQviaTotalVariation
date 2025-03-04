@@ -2,7 +2,7 @@ import torch
 from torch.distributions import MultivariateNormal
 from abc import abstractmethod
 import probability_mass_computation as proba
-from regions import HyperRectangularVoronoiPartition, HyperRectangle
+from regions import HyperRectangularPartition, HyperRectangle
 from typing import Union
 
 
@@ -25,7 +25,7 @@ class Gaussian(_Distributions):
         mvn = MultivariateNormal(loc=self.mean, covariance_matrix=self.covariance)
         return mvn.sample((n_samples,))
 
-    def compute_probabilities(self, regions: Union[HyperRectangularVoronoiPartition, HyperRectangle]):
+    def compute_probabilities(self, regions: Union[HyperRectangularPartition, HyperRectangle]):
 
         lower = regions.lower
         upper = regions.upper
