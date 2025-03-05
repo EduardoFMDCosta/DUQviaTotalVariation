@@ -1,7 +1,7 @@
 import torch
 import parameters
 import grid_generation as grid
-import total_variation_bound as tv
+import bounds as tv
 
 from distributions import GaussianMixture, Gaussian, UniformMixture, Uniform
 
