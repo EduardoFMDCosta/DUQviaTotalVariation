@@ -3,7 +3,7 @@ import torch
 
 import grid_generation as grid
 import probability_mass_computation as proba
-import total_variation_bound as tv
+import bounds as tv
 from dynamics import LinearDynamics
 
 from scipy.stats import norm
