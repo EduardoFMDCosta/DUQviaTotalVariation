@@ -38,4 +38,3 @@ def compute_bound_TV(f: Dynamics, mixture_distribution: Union[Gaussian, Gaussian
     bound = torch.dot(erf_h, mixture_probs)
 
     return bound
-
