@@ -1,15 +1,7 @@
-from typing import Union, Optional
-
 import torch
-import math
-from torch.special import erf
-import torch.linalg as linalg
-import grid_generation as grid
-
 import bound_propagation as bp
-from bound_propagation import BoundModelFactory
-
-from regions import HyperRectangularPartition
+from typing import Union, Optional
+from regions import HyperRectangularPartition, HyperRectangle
 
 factory = bp.BoundModelFactory()
 
@@ -20,11 +12,28 @@ class Dynamics(torch.nn.Sequential):
         super().__init__(*args, **kwargs)
 
     @torch.no_grad()
-    def compute_ibp(self,
-                    partition: HyperRectangularPartition) -> bp.IntervalBounds:
+    def compute_centralized_ibp(self,
+                                partition: HyperRectangularPartition) -> HyperRectangle:
 
         net = factory.build(self)
-        return net.ibp(bp.HyperRectangle(partition.lower, partition.upper))
+        ibp =  net.ibp(bp.HyperRectangle(partition.lower, partition.upper))
+
+        locs = partition.locs
+        f_locs = self(locs)
+
+        centralized_lower = ibp.lower - f_locs
+        centralized_upper = ibp.upper - f_locs
+
+        return HyperRectangle(centralized_lower, centralized_upper)
+
+    @torch.no_grad()
+    def compute_local_maximum_distance(self,
+                                       partition: HyperRectangularPartition):
+
+        centralized_hypercubes = self.compute_centralized_ibp(partition)
+        max_abs_values = torch.maximum(centralized_hypercubes.lower.abs(), centralized_hypercubes.upper.abs())
+
+        return max_abs_values.norm(p=2, dim=1)
 
 
 class LinearDynamics(Dynamics):
