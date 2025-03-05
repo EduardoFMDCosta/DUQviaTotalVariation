@@ -6,7 +6,7 @@ from regions import HyperRectangularPartition, HyperRectangle
 from typing import Union
 
 
-class _Distributions:
+class Distributions:
 
     def __call__(self, *args, **kwargs):
         pass
@@ -16,7 +16,7 @@ class _Distributions:
         pass
 
 
-class Gaussian(_Distributions):
+class Gaussian(Distributions):
     def __init__(self, mean: torch.Tensor, cov: torch.Tensor):
         self.mean = mean
         self.covariance = cov
@@ -46,7 +46,7 @@ class Gaussian(_Distributions):
         return torch.prod(upper_cdf - lower_cdf, dim=1)
 
 
-class GaussianMixture(_Distributions):
+class GaussianMixture(Distributions):
     def __init__(self, means: torch.Tensor, covs: torch.Tensor, weights: torch.Tensor):
         self.means = means
         self.covariances = covs
