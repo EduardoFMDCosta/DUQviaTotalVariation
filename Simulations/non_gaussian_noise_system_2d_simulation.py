@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import torch
 import parameters
 import monte_carlo
-import tv_bound_algorithm as algorithm
+import experiments as algorithm
 
 from dynamics import LinearDynamics
 from distributions import Uniform, GaussianMixture
