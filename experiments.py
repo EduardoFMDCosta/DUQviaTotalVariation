@@ -47,7 +47,6 @@ def approximation_scheme_tv(f: Dynamics,
 
             locs = partition.locs
             probs = mixture_distribution.compute_probabilities(partition)
-            probs[-1] = 1 - probs[:-1].sum() #TODO: improve this. The idea is to replace the prob of the unbounded region by 1-others
 
             tv_bound = tv.compute_bound_TV(f, probs, noise_distribution, partition)
             #TODO: FIX, FOR SECOND PROPAGATION LAST PROB IS NEGATIVE
