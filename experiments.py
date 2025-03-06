@@ -1,14 +1,10 @@
-from typing import Union
-
 import torch
-import parameters
-import grid_generation as grid
+from typing import Union
 import bounds as tv
-
 from distributions import Gaussian, GaussianMixture
 from dynamics import Dynamics
 from regions import HyperRectangularPartition
-from utils import get_shell, get_shell_loc
+from utils import get_shell, get_shell_loc, uniform_grid
 
 
 def propagate(f: Dynamics,
@@ -16,18 +12,17 @@ def propagate(f: Dynamics,
               locs: torch.Tensor,
               noise_distribution: Gaussian):
 
-    mixture_means = f(locs)
-    covs_noise = noise_distribution.covariance.unsqueeze(0).expand(mixture_means.size(0), -1, -1)
-    mixture_distribution = GaussianMixture(mixture_means, covs_noise, weights)
+    covs_noise = noise_distribution.covariance.unsqueeze(0).expand(locs.size(0), -1, -1)
+    mixture_distribution = GaussianMixture(f(locs), covs_noise, weights)
 
     return mixture_distribution
 
-def tv_bound_algorithm(f: Dynamics,
-                       initial_distribution: Union[Gaussian, GaussianMixture],
-                       noise_distribution: Gaussian,
-                       grid_type,
-                       prediction_horizon: int = 10,
-                       n_samples: int = 1000):
+def approximation_scheme_tv(f: Dynamics,
+                            initial_distribution: Union[Gaussian, GaussianMixture],
+                            noise_distribution: Gaussian,
+                            initial_grid_size: int = 10,
+                            prediction_horizon: int = 2,
+                            n_samples: int = 1000):
 
     tv_bounds = [0.0]
     mixtures = []
@@ -37,7 +32,7 @@ def tv_bound_algorithm(f: Dynamics,
         if t == 0:
             mixture_distribution = initial_distribution
         else:
-            mixture_distribution = propagate(f, mixture_probs, mixture_locs, noise_distribution)
+            mixture_distribution = propagate(f, probs, locs, noise_distribution)
 
 
         mixtures.append(mixture_distribution)
@@ -47,26 +42,17 @@ def tv_bound_algorithm(f: Dynamics,
             shell = get_shell(samples)
             loc_shell = get_shell_loc(shell)
 
-            partition = HyperRectangularPartition(locs, loc_shell, shell)
+            inner_locs = uniform_grid(shell[0], shell[1], initial_grid_size) #TODO: Change to Steven's discretization tool?
+            partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
+
             locs = partition.locs
+            probs = mixture_distribution.compute_probabilities(partition)
+            probs[-1] = 1 - probs[:-1].sum() #TODO: improve this. The idea is to replace the prob of the unbounded region by 1-others
 
-            mixture_probs = mixture_distribution.compute_probabilities(partition)
-
-            tv_bound, contributions = tv.compute_bound_TV(f, mixture_distribution, noise_distribution, partition)
-
-
-            for r in range(parameters.n_refinements):
-
-                regions = regions[:-1]
-                signatures = signatures[:-1]
-                regions, signatures = grid.refine_regions(regions, signatures, contributions, parameters.threshold)
-
-                double_hat_probs = hat_mixture.compute_regions_probabilities(regions) #TODO: Generalize for GMMs with different covariances
-                regions, signatures = grid.add_unbounded_representations(regions, signatures, outer_signature)
-
-                tv_bound, contributions = tv.compute_upper_bound_for_TV(dynamics, noise_distribution, signatures, double_hat_probs, regions)
-
+            tv_bound = tv.compute_bound_TV(f, probs, noise_distribution, partition)
+            #TODO: FIX, FOR SECOND PROPAGATION LAST PROB IS NEGATIVE
+            #TODO: Add refinement
 
             tv_bounds.append(tv_bound.item())
 
-    return torch.Tensor(tv_bounds), mixtures
+    return mixtures, tv_bounds

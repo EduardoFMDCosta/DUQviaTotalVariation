@@ -1,10 +1,11 @@
 import torch
 from dynamics import LinearDynamics
 from distributions import GaussianMixture, Gaussian
+from experiments import approximation_scheme_tv
 from probability_mass_computation import gaussian_proba_mass_inside_hypercubes
 from regions import HyperRectangle, HyperRectangularPartition
 from copy import deepcopy
-from utils import create_uniform_grid, compute_kernel_at_locs, compute_sup_inf_kernel
+from utils import uniform_grid, compute_kernel_at_locs, compute_sup_inf_kernel
 
 if __name__ == '__main__':
     torch.manual_seed(0)
@@ -17,14 +18,28 @@ if __name__ == '__main__':
         ])
     f = LinearDynamics(A)
 
+    A = torch.Tensor(
+        [
+            [0.84]
+        ])
+    f = LinearDynamics(A)
+
     # Initial distribution
-    mean_initial = torch.Tensor([4, 4])
-    cov_initial = 0.05 * torch.eye(2)
+    mean_initial = torch.Tensor([4])
+    cov_initial = torch.eye(1)
     distribution = Gaussian(mean_initial, cov_initial)
 
     # Noise distribution
-    mean_noise = torch.Tensor([0, 0])
-    cov_noise = 3. * torch.eye(2)
+    mean_noise = torch.Tensor([0])
+    cov_noise = 0.5 * torch.eye(1)
+    noise_distribution = Gaussian(mean_noise, cov_noise)
+
+    mixtures, tv_bounds = approximation_scheme_tv(f, distribution, noise_distribution)
+
+
+
+
+
 
     # Prepare fixed grid
     shell = torch.tensor([[-5, 15], [-5, 15]])
@@ -36,7 +51,7 @@ if __name__ == '__main__':
     # Define unsafe set
     unsafe_set = HyperRectangle(torch.tensor([3, 2]), torch.tensor([5, 4]))
 
-    f.compute_ibp(regions)
+    f.compute_local_maximum_distance(regions)
 
     # Kernel related quantities
     kernel_at_locs_regions, kernel_at_locs_unsafe_set = compute_kernel_at_locs(f, locs, cov_noise, regions, unsafe_set)
