@@ -1,5 +1,6 @@
 import torch
 from typing import Union
+from itertools import accumulate
 import bounds as tv
 from distributions import Gaussian, GaussianMixture
 from dynamics import Dynamics
@@ -53,5 +54,8 @@ def approximation_scheme_tv(f: Dynamics,
             #TODO: Add refinement algorithm
 
             tv_bounds.append(tv_bound.item())
+
+    # TV_{t+1} = min(TV_t + bound, 1)
+    tv_bounds = [min(1, tv) for tv in accumulate(tv_bounds)]
 
     return mixtures, tv_bounds

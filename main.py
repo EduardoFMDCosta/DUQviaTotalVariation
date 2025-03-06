@@ -28,8 +28,8 @@ if __name__ == '__main__':
     mixtures, tv_bounds = approximation_scheme_tv(f,
                                                   initial_distribution,
                                                   noise_distribution,
-                                                  initial_grid_size = 50,
-                                                  prediction_horizon = 2,
+                                                  initial_grid_size = 10,
+                                                  prediction_horizon = 4,
                                                   n_samples = 1000)
 
     print(f'TV bounds: {tv_bounds}')
