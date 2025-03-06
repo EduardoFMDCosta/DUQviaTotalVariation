@@ -78,7 +78,7 @@ class HyperRectangularPartition:
         pos_diff[mask] = torch.inf
 
         upper_inner = self._locs_inner + 0.5 * pos_diff.min(dim=-2).values
-        upper_inner = upper_inner.clamp(min=self.shell[..., 0], max=self.shell[..., 1])
+        upper_inner = upper_inner.clamp(min=self.shell[0], max=self.shell[1])
         upper_shell = torch.zeros(self._num_dims).fill_(torch.inf)
 
         return torch.cat((upper_inner, upper_shell.unsqueeze(-2)), dim=-2)
@@ -89,7 +89,7 @@ class HyperRectangularPartition:
         neg_diff[mask] = -torch.inf
 
         lower_inner = self._locs_inner + 0.5 * neg_diff.max(dim=-2).values
-        lower_inner = lower_inner.clamp(min=self.shell[..., 0], max=self.shell[..., 1])
+        lower_inner = lower_inner.clamp(min=self.shell[0], max=self.shell[1])
         lower_shell = torch.zeros(self._num_dims).fill_(-torch.inf)
 
         return torch.cat((lower_inner, lower_shell.unsqueeze(-2)), dim=-2)
