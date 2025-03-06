@@ -49,7 +49,7 @@ def approximation_scheme_tv(f: Dynamics,
             probs = mixture_distribution.compute_probabilities(partition)
 
             tv_bound = tv.compute_bound_TV(f, probs, noise_distribution, partition)
-            #TODO: FIX, FOR SECOND PROPAGATION LAST PROB IS NEGATIVE
+
             #TODO: Add refinement
 
             tv_bounds.append(tv_bound.item())
