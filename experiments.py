@@ -50,7 +50,7 @@ def approximation_scheme_tv(f: Dynamics,
 
             tv_bound = tv.compute_bound_TV(f, probs, noise_distribution, partition)
 
-            #TODO: Add refinement
+            #TODO: Add refinement algorithm
 
             tv_bounds.append(tv_bound.item())
 
