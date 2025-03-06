@@ -24,6 +24,9 @@ class Dynamics(torch.nn.Sequential):
         centralized_lower = ibp.lower - f_locs
         centralized_upper = ibp.upper - f_locs
 
+        centralized_lower[centralized_lower.isnan()] = float('inf')
+        centralized_upper[centralized_upper.isnan()] = float('inf')
+
         return HyperRectangle(centralized_lower, centralized_upper)
 
     @torch.no_grad()
