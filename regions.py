@@ -1,4 +1,66 @@
+import itertools
 import torch
+from scipy.spatial import ConvexHull, HalfspaceIntersection
+from scipy.optimize import linprog
+
+class Polytope:
+    def __init__(self, M:torch.Tensor, b:torch.Tensor):
+        self._vertices = self.from_halfspaces(M, b)
+        self._M = M
+        self._b = b
+
+    def __init__(self, vertices:torch.Tensor):
+        self._M, self._b = self.from_vertices(vertices)
+        self._vertices = vertices
+
+    @property
+    def vertices(self):
+        return self._vertices
+
+    @property
+    def M(self):
+        return self._M
+    
+    @property
+    def b(self):
+        return self._b
+    
+    def includes(self, x:torch.Tensor):
+        # x must be a batch of points
+        return ((self._M @ x.T).T <= self._b).all(dim=1)
+    
+    def projections(self, x:torch.Tensor):
+        normals = self._M / torch.linalg.norm(self._M, dim=1, keepdim=True) 
+        distances = ((self._M @ x - self._b) / torch.linalg.norm(self._M, dim=1)**2).unsqueeze(1) 
+        projs = x - distances * normals 
+        return projs
+    
+    def furthest_and_closest_from(self, x:torch.Tensor):
+        projs = self.projections(x)        
+        mask = self.includes(projs)
+        projs = projs[mask]
+        vertices = self._vertices
+        candidates = torch.vstack((projs, vertices))
+        distances = torch.linalg.norm(candidates - x.repeat(len(candidates), 1), dim = 1)
+        imax, imin = torch.argmax(distances), torch.argmin(distances)
+        return candidates[imax], candidates[imin]
+        
+    @classmethod
+    def from_halfspaces(cls, M:torch.tensor, b:torch.Tensor):
+        # TODO: test
+        halfspaces = torch.hstack([M, -b.reshape(-1, 1)])
+        res = linprog(torch.zeros(M.shape[1]), A_ub=M, b_ub=b, method='highs')
+        hs = HalfspaceIntersection(halfspaces, res.x)
+        return hs.intersections 
+
+    @classmethod
+    def from_vertices(cls, vertices:torch.Tensor):
+        ch = ConvexHull(vertices)
+        M = torch.Tensor(ch.equations[:, :-1])
+        b = torch.Tensor(-ch.equations[:, -1])
+        return M, b
+        
+
 
 class HyperRectangle:
     def __init__(self, lower, upper):
@@ -22,7 +84,7 @@ class HyperRectangle:
         return self.lower.size(dim)
 
     def get_vertices(self):
-        pass
+        return torch.tensor(list(itertools.product(*zip(self.lower, self.upper))))
 
     @staticmethod
     def from_eps(x, eps):
