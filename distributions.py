@@ -43,7 +43,12 @@ class Gaussian(Distributions):
         lower_cdf = normal.cdf(lower_norm)
         upper_cdf = normal.cdf(upper_norm)
 
-        return torch.prod(upper_cdf - lower_cdf, dim=1)
+        probs = torch.prod(upper_cdf - lower_cdf, dim=1)
+
+        if isinstance(regions, HyperRectangularPartition):
+            probs[-1] = 1 - probs[:-1].sum() # Last region represents the complement of shell
+
+        return probs
 
 
 class GaussianMixture(Distributions):
@@ -66,4 +71,4 @@ class GaussianMixture(Distributions):
             for mean, cov in zip(self.means, self.covariances)
         ]
         probs = torch.stack(probs, dim=0)
-        return (self.weights * probs).sum(dim=-1)
+        return torch.matmul(self.weights, probs)
