@@ -40,7 +40,10 @@ class Polytope:
         mask = self.includes(projs)
         projs = projs[mask]
         vertices = self._vertices
-        candidates = torch.vstack((projs, vertices))
+        if self.includes(x.unsqueeze(0)):
+            candidates = torch.vstack((projs, vertices, x.unsqueeze(0)))
+        else:
+            candidates = torch.vstack((projs, vertices))
         distances = torch.linalg.norm(candidates - x.repeat(len(candidates), 1), dim = 1)
         imax, imin = torch.argmax(distances), torch.argmin(distances)
         return candidates[imax], candidates[imin]
