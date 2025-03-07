@@ -1,7 +1,7 @@
 import torch
 from typing import Union
 from itertools import accumulate
-import bounds as tv
+from bounds import compute_bound_TV
 from distributions import Gaussian, GaussianMixture
 from dynamics import Dynamics
 from regions import HyperRectangularPartition
@@ -49,7 +49,7 @@ def approximation_scheme_tv(f: Dynamics,
             locs = partition.locs
             probs = mixture_distribution.compute_probabilities(partition)
 
-            tv_bound = tv.compute_bound_TV(f, probs, noise_distribution, partition)
+            tv_bound = compute_bound_TV(f, probs, noise_distribution, partition)
 
             #TODO: Add refinement algorithm
 
@@ -59,3 +59,32 @@ def approximation_scheme_tv(f: Dynamics,
     tv_bounds = [min(1, tv) for tv in accumulate(tv_bounds)]
 
     return mixtures, tv_bounds
+
+def monte_carlo(f: Dynamics,
+                initial_distribution: Union[Gaussian, GaussianMixture],
+                noise_distribution: Gaussian,
+                prediction_horizon: int = 2,
+                n_samples: int = 1000):
+
+    samples = initial_distribution(n_samples)
+
+    monte_carlo_samples = [samples]
+
+    for t in range(prediction_horizon):
+        noise_samples = noise_distribution(n_samples)
+        samples = f(samples) + noise_samples
+
+        monte_carlo_samples.append(samples)
+
+    return monte_carlo_samples
+
+def sample_from_gmm(mixtures: list,
+                    n_samples: int = 1000):
+
+    gmm_samples = []
+
+    for mixture in mixtures:
+        samples = mixture(n_samples)
+        gmm_samples.append(samples)
+
+    return gmm_samples
