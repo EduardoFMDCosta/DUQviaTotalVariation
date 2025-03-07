@@ -82,22 +82,32 @@ def compute_inf_sup_kernel(f, covariance, regions, set):
 
         inf_probs_set.append(inf_prob_set)
         sup_probs_set.append(sup_prob_set)
-    
-    # Inf from outer shell is always zero
-    inf_probs_regions.append(torch.zeros(len(regions.lower)))
-    inf_probs_set.append(torch.zeros(1))
 
-    # Sup from outer shell to regions
-    sup_prob_regions = torch.zeros(len(regions.lower))
+    # Handle shell; TODO: the following can be removed if the function is optimized (initialized twice)
     shell = HyperRectangle(lower=regions.shell[0], upper=regions.shell[1])
     vertices_shell = shell.get_vertices()
     vertices_image_shell = f(vertices_shell)
     image_shell = Polytope(vertices_image_shell)   
+    
+    # Inf from outer shell is always zero, except to outer shell
+    inf_prob_regions = torch.zeros(len(regions.lower))
+    # Inf from outer shell to outer shell
+    closest = image_shell.closest_from_outside(shell.center)
+    kernel_inf = Gaussian(f(closest), covariance)
+    inf_prob_regions[-1] = 1 - kernel_inf.compute_probabilities(shell)
+
+    inf_probs_regions.append(inf_prob_regions)
+    inf_probs_set.append(torch.zeros(1))
+
+    # Sup from outer shell to regions
+    sup_prob_regions = torch.zeros(len(regions.lower))
     for i, (lower_to, upper_to, center_to) in enumerate(zip(regions.lower[:-1], regions.upper[:-1], regions.center[:-1])):
         region_to = HyperRectangle(lower_to, upper_to)
         closest = image_shell.closest_from_outside(center_to)
         kernel_sup = Gaussian(f(closest), covariance) 
         sup_prob_regions[i] = kernel_sup.compute_probabilities(region_to) 
+    # Sup from outer shell to outer shell is 1
+    sup_prob_regions[-1] = 1
     sup_probs_regions.append(sup_prob_regions) 
 
     # Sup from outer shell to unsafe set
