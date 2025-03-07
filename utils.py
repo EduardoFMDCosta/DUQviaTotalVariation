@@ -67,8 +67,8 @@ def compute_inf_sup_kernel(f, covariance, regions, set):
         furthest, closest = image.furthest_and_closest_from(shell.center)
         kernel_inf = Gaussian(f(closest), covariance)   # closest from center minimizes
         kernel_sup = Gaussian(f(furthest), covariance)  # furthest from center maximizes
-        inf_prob_regions[-1] = 1 - kernel_inf.compute_probabilities(region_to)
-        sup_prob_regions[-1] = 1 - kernel_sup.compute_probabilities(region_to) 
+        inf_prob_regions[-1] = 1 - kernel_inf.compute_probabilities(shell)
+        sup_prob_regions[-1] = 1 - kernel_sup.compute_probabilities(shell) 
 
         inf_probs_regions.append(inf_prob_regions)
         sup_probs_regions.append(sup_prob_regions)
@@ -99,7 +99,7 @@ def compute_inf_sup_kernel(f, covariance, regions, set):
         kernel_sup = Gaussian(f(closest), covariance) 
         sup_prob_regions[i] = kernel_sup.compute_probabilities(region_to) 
     sup_probs_regions.append(sup_prob_regions) 
-    
+
     # Sup from outer shell to unsafe set
     sup_prob_set = torch.zeros(1)
     closest = image_shell.closest_from_outside(set.center)
