@@ -72,10 +72,22 @@ def compute_inf_sup_kernel(f, covariance, regions, set):
 
         inf_probs_regions.append(inf_prob_regions)
         sup_probs_regions.append(sup_prob_regions)
+
+        # To the unsafe set
+        furthest, closest = image.furthest_and_closest_from(set.center)
+        kernel_inf = Gaussian(f(furthest), covariance) 
+        kernel_sup = Gaussian(f(closest), covariance) 
+        inf_prob_set[0] = kernel_inf.compute_probabilities(set)
+        sup_prob_set[0] = kernel_sup.compute_probabilities(set) 
+
+        inf_probs_set.append(inf_prob_set)
+        sup_probs_set.append(sup_prob_set)
     
     # Inf from outer shell is always zero
     inf_probs_regions.append(torch.zeros(len(regions.lower)))
-    # Sup from outer shell
+    inf_probs_set.append(torch.zeros(1))
+
+    # Sup from outer shell to regions
     sup_prob_regions = torch.zeros(len(regions.lower))
     shell = HyperRectangle(lower=regions.shell[0], upper=regions.shell[1])
     vertices_shell = shell.get_vertices()
@@ -88,6 +100,12 @@ def compute_inf_sup_kernel(f, covariance, regions, set):
         sup_prob_regions[i] = kernel_sup.compute_probabilities(region_to) 
     sup_probs_regions.append(sup_prob_regions) 
     
+    # Sup from outer shell to unsafe set
+    sup_prob_set = torch.zeros(1)
+    closest = image_shell.closest_from_outside(set.center)
+    kernel_sup = Gaussian(f(closest), covariance) 
+    sup_prob_set[0] = kernel_sup.compute_probabilities(set)
+    sup_probs_set.append(sup_prob_set) 
 
     inf_probs_regions = torch.stack(inf_probs_regions)
     sup_probs_regions = torch.stack(sup_probs_regions)

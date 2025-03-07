@@ -54,6 +54,7 @@ class Polytope:
         # if center is in the outer: it is the closest
         if not self.includes(x.unsqueeze(0)):
             return x
+        
         # else: look at the other candidates
         projs = self.projections(x)        
         mask = self.includes(projs)
