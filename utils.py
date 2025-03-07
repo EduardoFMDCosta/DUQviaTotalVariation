@@ -41,7 +41,10 @@ def compute_inf_sup_kernel(f, covariance, regions, set):
     sup_probs_regions, inf_probs_regions = [], []
     sup_probs_set, inf_probs_set = [], []
 
-    # TODO: suboptimal to create new objects in a for loop (HyperRectangle and Polytope)
+    # TODO: suboptimal to create new objects in a for loop (HyperRectangle, Polytope and Gaussian)
+    #       this can be at least reduced, e.g. for now, for the sake of readability, the regions 
+    #       are twice casted as HyperRectangle
+
     for lower_from, upper_from in zip(regions.lower[:-1], regions.upper[:-1]):
         sup_prob_regions, sup_prob_set = torch.zeros(len(regions.lower)), torch.zeros(1)
         inf_prob_regions, inf_prob_set = torch.ones(len(regions.lower)), torch.ones(1)
@@ -59,20 +62,37 @@ def compute_inf_sup_kernel(f, covariance, regions, set):
             inf_prob_regions[i] = kernel_inf.compute_probabilities(region_to)
             sup_prob_regions[i] = kernel_sup.compute_probabilities(region_to) 
         
-        # TODO: to the outer shell
-    
+        # To the outer shell
+        shell = HyperRectangle(lower=regions.shell[0], upper=regions.shell[1])
+        furthest, closest = image.furthest_and_closest_from(shell.center)
+        kernel_inf = Gaussian(f(closest), covariance)   # closest from center minimizes
+        kernel_sup = Gaussian(f(furthest), covariance)  # furthest from center maximizes
+        inf_prob_regions[-1] = 1 - kernel_inf.compute_probabilities(region_to)
+        sup_prob_regions[-1] = 1 - kernel_sup.compute_probabilities(region_to) 
+
         inf_probs_regions.append(inf_prob_regions)
         sup_probs_regions.append(sup_prob_regions)
     
-    # TODO: from the outer shell
+    # Inf from outer shell is always zero
     inf_probs_regions.append(torch.zeros(len(regions.lower)))
-    # sup_probs_regions.append() # TODO sup from 
+    # Sup from outer shell
+    sup_prob_regions = torch.zeros(len(regions.lower))
+    shell = HyperRectangle(lower=regions.shell[0], upper=regions.shell[1])
+    vertices_shell = shell.get_vertices()
+    vertices_image_shell = f(vertices_shell)
+    image_shell = Polytope(vertices_image_shell)   
+    for i, (lower_to, upper_to, center_to) in enumerate(zip(regions.lower[:-1], regions.upper[:-1], regions.center[:-1])):
+        region_to = HyperRectangle(lower_to, upper_to)
+        closest = image_shell.closest_from_outside(center_to)
+        kernel_sup = Gaussian(f(closest), covariance) 
+        sup_prob_regions[i] = kernel_sup.compute_probabilities(region_to) 
+    sup_probs_regions.append(sup_prob_regions) 
     
+
     inf_probs_regions = torch.stack(inf_probs_regions)
     sup_probs_regions = torch.stack(sup_probs_regions)
     inf_probs_set = torch.tensor(inf_probs_set)
     sup_probs_set = torch.tensor(sup_probs_set)
-
     return inf_probs_regions, sup_probs_regions, inf_probs_set, sup_probs_set
 
 def compute_kernel_at_locs(f, locs, covariance, regions, set):

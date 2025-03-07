@@ -47,6 +47,22 @@ class Polytope:
         distances = torch.linalg.norm(candidates - x.repeat(len(candidates), 1), dim = 1)
         imax, imin = torch.argmax(distances), torch.argmin(distances)
         return candidates[imax], candidates[imin]
+    
+    def closest_from_outside(self, x:torch.Tensor):
+        # TODO: not sure if it's the cleanest as an object method
+
+        # if center is in the outer: it is the closest
+        if not self.includes(x.unsqueeze(0)):
+            return x
+        # else: look at the other candidates
+        projs = self.projections(x)        
+        mask = self.includes(projs)
+        projs = projs[mask]
+        vertices = self._vertices
+        candidates = torch.vstack((projs, vertices))
+        distances = torch.linalg.norm(candidates - x.repeat(len(candidates), 1), dim = 1)
+        imin = torch.argmin(distances)
+        return candidates[imin]
         
     @classmethod
     def from_halfspaces(cls, M:torch.tensor, b:torch.Tensor):
