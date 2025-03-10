@@ -137,3 +137,18 @@ def compute_kernel_at_locs(f, locs, covariance, regions, set):
         probs_set.append(prob_set)
 
     return torch.stack(probs_regions), torch.tensor(probs_set)
+
+def o_maximization(coeffs:torch.Tensor, lower_bounds:torch.Tensor, upper_bounds:torch.Tensor):
+    # inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
+    order = torch.argsort(coeffs)
+    p = lower_bounds
+    rem = torch.sum(lower_bounds)
+    for idx in order:
+        gap = upper_bounds[idx] - p[idx]
+        if rem <= gap:
+            p[idx] += rem 
+            break
+        else: 
+            p[idx] += gap
+            rem -= gap
+    return p
