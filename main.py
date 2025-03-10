@@ -1,9 +1,11 @@
 import torch
+from copy import deepcopy
+
 from dynamics import LinearDynamics
 from distributions import Gaussian, GaussianMixture
 from experiments import approximation_scheme_tv
 from regions import HyperRectangle, HyperRectangularPartition
-from utils import compute_sup_inf_kernel, get_shell, get_shell_loc, uniform_grid
+from utils import compute_inf_sup_kernel, get_shell, get_shell_loc, uniform_grid, compute_kernel_at_locs, o_maximization
 
 if __name__ == '__main__':
     torch.manual_seed(0)
@@ -38,16 +40,52 @@ if __name__ == '__main__':
     unsafe_set = HyperRectangle(torch.tensor([3, 2]), torch.tensor([5, 4]))
     
     # Compute sup/inf_{z \in Ri} T(Rj | z) and sup/inf_{z \in Ri} T(U | z)
-    sup_probs_regions, inf_probs_regions, sup_probs_set, inf_probs_set = compute_sup_inf_kernel(f, cov_noise, partition, set)
+    inf_kernel_regions, sup_kernel_regions, inf_kernel_unsafe_set, sup_kernel_unsafe_set = compute_inf_sup_kernel(
+        f, 
+        cov_noise, 
+        partition, 
+        unsafe_set
+    )
+    PRINT = False
+    if PRINT:
+        for i, (inf_prob_regions, sup_prob_regions) in enumerate(zip(inf_kernel_regions, sup_kernel_regions)):
+            for j, (inf_prob_region, sup_prob_region) in enumerate(zip(inf_prob_regions, sup_prob_regions)):
+                print("{} -> {}: [{}, {}]".format(i, j, inf_prob_region, sup_prob_region))
+            print("-----")
+    
+    locs = partition.locs
+    kernel_at_locs_regions, kernel_at_locs_unsafe_set = compute_kernel_at_locs(f, locs, cov_noise, partition, unsafe_set)
 
+    # Initialize approximation distribution
+    approx_distribution = deepcopy(initial_distribution)
 
+    alphas_regions, betas_regions = torch.zeros(len(locs)), torch.zeros(len(locs))
+    alpha_unsafe_set, beta_unsafe_set = torch.zeros(1), torch.zeros(1)
 
-    # # Get GMMs and TV bounds
-    # mixtures, tv_bounds = approximation_scheme_tv(f,
-    #                                               initial_distribution,
-    #                                               noise_distribution,
-    #                                               initial_grid_size = 10,
-    #                                               prediction_horizon = 4,
-    #                                               n_samples = 1000)
+    #Run simulation
+    means_gmm = f(locs)
+    for t in range(30):
+        # Update approximation
+        approx_probs = approx_distribution.compute_probabilities(partition)
+        covs_noise = cov_noise.unsqueeze(0).expand(means_gmm.size(0), -1, -1)
+        approx_distribution = GaussianMixture(means_gmm, covs_noise, approx_probs)
 
-    # print(f'TV bounds: {tv_bounds}')
+        # Compute bounds
+        p_min = o_maximization(- inf_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)
+        p_max = o_maximization(sup_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)
+        alpha_unsafe_set = torch.dot(inf_kernel_unsafe_set, p_min) - torch.dot(kernel_at_locs_unsafe_set, approx_probs)
+        beta_unsafe_set = torch.dot(sup_kernel_unsafe_set, p_max) - torch.dot(kernel_at_locs_unsafe_set, approx_probs)
+
+        # O-maximization phase
+        next_alphas_regions, next_betas_regions = torch.zeros(len(locs)), torch.zeros(len(locs))
+        for i, (inf_kernel_region, sup_kernel_region) in enumerate(zip(inf_kernel_regions.T, sup_kernel_regions.T)):
+            p_min = o_maximization(- inf_kernel_region, approx_probs + alphas_regions, approx_probs + betas_regions)
+            p_max = o_maximization(sup_kernel_region, approx_probs + alphas_regions, approx_probs + betas_regions)
+            next_alphas_regions[i] += torch.dot(inf_kernel_region, p_min)
+            next_betas_regions[i] += torch.dot(sup_kernel_region, p_max)
+        next_alphas_regions -= kernel_at_locs_regions.T @ approx_probs
+        next_betas_regions -= kernel_at_locs_regions.T @ approx_probs
+        alphas_regions = next_alphas_regions
+        betas_regions = next_betas_regions
+        
+        print("(t = {}) alpha = {}, beta = {}".format(t, alpha_unsafe_set, beta_unsafe_set))
