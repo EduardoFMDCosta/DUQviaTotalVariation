@@ -140,15 +140,16 @@ def compute_kernel_at_locs(f, locs, covariance, regions, set):
 
 def o_maximization(coeffs:torch.Tensor, lower_bounds:torch.Tensor, upper_bounds:torch.Tensor):
     # inspired from https://www.baymler.com/IntervalMDP.jl/dev/algorithms/#Efficient-value-iteration
-    order = torch.argsort(coeffs)
-    p = lower_bounds
-    rem = torch.sum(lower_bounds)
-    for idx in order:
-        gap = upper_bounds[idx] - p[idx]
-        if rem <= gap:
-            p[idx] += rem 
-            break
+    order = torch.argsort(-coeffs)
+    p = deepcopy(lower_bounds)
+    rem = 1 - sum(p)
+    gap = upper_bounds - p
+    cumgap = torch.cumsum(gap[order], dim=0)
+    for idx, o in enumerate(order):
+        rem_state = max(rem - cumgap[idx] + gap[o], 0)
+        if gap[o] < rem_state:
+            p[o] += gap[o]
         else: 
-            p[idx] += gap
-            rem -= gap
+            p[o] += rem_state
+            break
     return p
