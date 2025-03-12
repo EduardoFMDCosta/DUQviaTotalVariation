@@ -7,6 +7,8 @@ from experiments import approximation_scheme_tv
 from regions import HyperRectangle, HyperRectangularPartition
 from utils import compute_inf_sup_kernel, get_shell, get_shell_loc, uniform_grid, compute_kernel_at_locs, o_maximization
 
+import matplotlib.pyplot as plt
+
 if __name__ == '__main__':
     torch.manual_seed(0)
 
@@ -29,15 +31,20 @@ if __name__ == '__main__':
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     # Define partition
-    n_samples = 100
-    samples = initial_distribution(n_samples)
-    shell = get_shell(samples)
+    # n_samples = 100
+    # samples = initial_distribution(n_samples)
+    # shell = get_shell(samples)
+    shell = torch.tensor([
+        [-6.,   -6.], 
+        [6.,    6. ]
+    ])
     loc_shell = get_shell_loc(shell)
-    inner_locs = uniform_grid(shell[0], shell[1], 2)
+    inner_locs = uniform_grid(shell[0], shell[1], 10)
+
     partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([4, 3]), torch.tensor([5, 4]))
+    unsafe_set = HyperRectangle(torch.tensor([-0.5, -0.5]), torch.tensor([0.5, 0.5]))
     
     # Compute sup/inf_{z \in Ri} T(Rj | z) and sup/inf_{z \in Ri} T(U | z)
     inf_kernel_regions, sup_kernel_regions, inf_kernel_unsafe_set, sup_kernel_unsafe_set = compute_inf_sup_kernel(
@@ -52,17 +59,32 @@ if __name__ == '__main__':
 
     # Initialize approximation distribution
     approx_distribution = deepcopy(initial_distribution)
-
     alphas_regions, betas_regions = torch.zeros(len(locs)), torch.zeros(len(locs))
     alpha_unsafe_set, beta_unsafe_set = torch.zeros(1), torch.zeros(1)
+    
+    # For plotting
+    lbs, ts, aps, ubs = [], [], [], []
 
     #Run simulation
+    mean_k = deepcopy(mean_initial)
+    cov_k = deepcopy(cov_initial)
     means_gmm = f(locs)
     for t in range(30):
+        # Compute the true distribution for comparaison
+        mean_k = torch.matmul(A, mean_k) + mean_noise
+        cov_k = torch.matmul(A, cov_k)
+        cov_k = torch.matmul(cov_k, torch.t(A)) + cov_noise
+        dis_k = Gaussian(mean_k, cov_k)
+
         # Update approximation
         approx_probs = approx_distribution.compute_probabilities(partition)
         covs_noise = cov_noise.unsqueeze(0).expand(means_gmm.size(0), -1, -1)
         approx_distribution = GaussianMixture(means_gmm, covs_noise, approx_probs)
+
+        # Compute true error
+        true_unsafe = dis_k.compute_probabilities(unsafe_set)
+        approx_unsafe = approx_distribution.compute_probabilities(unsafe_set)
+        diff_unsafe = true_unsafe - approx_unsafe
 
         # Compute bounds
         p_min = o_maximization(- inf_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)
@@ -81,5 +103,19 @@ if __name__ == '__main__':
         next_betas_regions -= kernel_at_locs_regions.T @ approx_probs
         alphas_regions = next_alphas_regions
         betas_regions = next_betas_regions
-        
-        print("(t = {}) alpha = {}, beta = {}".format(t, alpha_unsafe_set, beta_unsafe_set))
+
+        lbs.append(approx_unsafe + alpha_unsafe_set)
+        ts.append(true_unsafe)
+        aps.append(approx_unsafe)
+        ubs.append(approx_unsafe + beta_unsafe_set)
+
+        print("(t = {}) alpha = {}, true = {}, beta = {}".format(t, alpha_unsafe_set, diff_unsafe[0], beta_unsafe_set))
+
+lbs, ts, aps, ubs = torch.tensor(lbs), torch.tensor(ts), torch.tensor(aps), torch.tensor(ubs)
+
+plt.ylim(0 - 0.005, torch.max(ubs) + 0.05)
+plt.fill_between(range(30), lbs, ubs, color="lightgrey", label = "Our bounds")
+plt.plot(range(30), ts, label = "True unsafe probability", color = "green")
+plt.plot(range(30), aps, label = "Approximated unsafe probability", color = "red")
+plt.legend(loc = "upper right")
+plt.show()
