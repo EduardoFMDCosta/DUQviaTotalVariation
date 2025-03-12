@@ -4,6 +4,7 @@ from copy import deepcopy
 from dynamics import LinearDynamics
 from distributions import Gaussian, GaussianMixture
 from experiments import approximation_scheme_tv
+from plotting import plot_interval
 from regions import HyperRectangle, HyperRectangularPartition
 from utils import compute_inf_sup_kernel, get_shell, get_shell_loc, uniform_grid, compute_kernel_at_locs, o_maximization
 
@@ -31,9 +32,6 @@ if __name__ == '__main__':
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     # Define partition
-    # n_samples = 100
-    # samples = initial_distribution(n_samples)
-    # shell = get_shell(samples)
     shell = torch.tensor([
         [-6.,   -6.], 
         [6.,    6. ]
@@ -104,18 +102,12 @@ if __name__ == '__main__':
         alphas_regions = next_alphas_regions
         betas_regions = next_betas_regions
 
-        lbs.append(approx_unsafe + alpha_unsafe_set)
+        lbs.append(alpha_unsafe_set)
         ts.append(true_unsafe)
         aps.append(approx_unsafe)
-        ubs.append(approx_unsafe + beta_unsafe_set)
+        ubs.append(beta_unsafe_set)
 
         print("(t = {}) alpha = {}, true = {}, beta = {}".format(t, alpha_unsafe_set, diff_unsafe[0], beta_unsafe_set))
 
 lbs, ts, aps, ubs = torch.tensor(lbs), torch.tensor(ts), torch.tensor(aps), torch.tensor(ubs)
-
-plt.ylim(0 - 0.005, torch.max(ubs) + 0.05)
-plt.fill_between(range(30), lbs, ubs, color="lightgrey", label = "Our bounds")
-plt.plot(range(30), ts, label = "True unsafe probability", color = "green")
-plt.plot(range(30), aps, label = "Approximated unsafe probability", color = "red")
-plt.legend(loc = "upper right")
-plt.show()
+plot_interval(aps, lbs, ubs, ts)
