@@ -37,7 +37,7 @@ if __name__ == '__main__':
     partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([3, 2]), torch.tensor([5, 4]))
+    unsafe_set = HyperRectangle(torch.tensor([4, 3]), torch.tensor([5, 4]))
     
     # Compute sup/inf_{z \in Ri} T(Rj | z) and sup/inf_{z \in Ri} T(U | z)
     inf_kernel_regions, sup_kernel_regions, inf_kernel_unsafe_set, sup_kernel_unsafe_set = compute_inf_sup_kernel(
@@ -46,12 +46,6 @@ if __name__ == '__main__':
         partition, 
         unsafe_set
     )
-    PRINT = False
-    if PRINT:
-        for i, (inf_prob_regions, sup_prob_regions) in enumerate(zip(inf_kernel_regions, sup_kernel_regions)):
-            for j, (inf_prob_region, sup_prob_region) in enumerate(zip(inf_prob_regions, sup_prob_regions)):
-                print("{} -> {}: [{}, {}]".format(i, j, inf_prob_region, sup_prob_region))
-            print("-----")
     
     locs = partition.locs
     kernel_at_locs_regions, kernel_at_locs_unsafe_set = compute_kernel_at_locs(f, locs, cov_noise, partition, unsafe_set)
@@ -73,7 +67,6 @@ if __name__ == '__main__':
         # Compute bounds
         p_min = o_maximization(- inf_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)
         p_max = o_maximization(sup_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)
-
 
         alpha_unsafe_set = torch.dot(inf_kernel_unsafe_set, p_min) - torch.dot(kernel_at_locs_unsafe_set, approx_probs)
         beta_unsafe_set = torch.dot(sup_kernel_unsafe_set, p_max) - torch.dot(kernel_at_locs_unsafe_set, approx_probs)
