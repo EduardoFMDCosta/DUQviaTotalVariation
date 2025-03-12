@@ -4,6 +4,7 @@ from copy import deepcopy
 from dynamics import LinearDynamics
 from distributions import Gaussian, GaussianMixture
 from experiments import approximation_scheme_tv
+from plotting import plot_interval
 from regions import HyperRectangle, HyperRectangularPartition
 from utils import compute_inf_sup_kernel, get_shell, get_shell_loc, uniform_grid, compute_kernel_at_locs, o_maximization
 
@@ -19,25 +20,25 @@ if __name__ == '__main__':
     f = LinearDynamics(A)
 
     # Initial distribution
-    mean_initial = torch.Tensor([4, 4])
-    cov_initial = torch.eye(2)
+    mean_initial = torch.Tensor([2, 8])
+    cov_initial = 0.2 * torch.eye(2)
     initial_distribution = Gaussian(mean_initial, cov_initial)
 
     # Noise distribution
     mean_noise = torch.Tensor([0, 0])
-    cov_noise = 0.5 * torch.eye(2)
+    cov_noise = 0.1 * torch.eye(2)
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     # Define partition
-    n_samples = 100
+    n_samples = 1000
     samples = initial_distribution(n_samples)
     shell = get_shell(samples)
     loc_shell = get_shell_loc(shell)
-    inner_locs = uniform_grid(shell[0], shell[1], 2)
+    inner_locs = uniform_grid(shell[0], shell[1], 10)
     partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([4, 3]), torch.tensor([5, 4]))
+    unsafe_set = HyperRectangle(torch.tensor([4.5, 5.5]), torch.tensor([5, 6]))
     
     # Compute sup/inf_{z \in Ri} T(Rj | z) and sup/inf_{z \in Ri} T(U | z)
     inf_kernel_regions, sup_kernel_regions, inf_kernel_unsafe_set, sup_kernel_unsafe_set = compute_inf_sup_kernel(
@@ -56,6 +57,8 @@ if __name__ == '__main__':
     alphas_regions, betas_regions = torch.zeros(len(locs)), torch.zeros(len(locs))
     alpha_unsafe_set, beta_unsafe_set = torch.zeros(1), torch.zeros(1)
 
+
+    alpha, beta, gmm_probs = [], [], []
     #Run simulation
     means_gmm = f(locs)
     for t in range(30):
@@ -81,5 +84,16 @@ if __name__ == '__main__':
         next_betas_regions -= kernel_at_locs_regions.T @ approx_probs
         alphas_regions = next_alphas_regions
         betas_regions = next_betas_regions
-        
+
+
+        alpha.append(alpha_unsafe_set.item())
+        beta.append(beta_unsafe_set.item())
+        gmm_probs.append(approx_distribution.compute_probabilities(unsafe_set))
+
         print("(t = {}) alpha = {}, beta = {}".format(t, alpha_unsafe_set, beta_unsafe_set))
+
+gmm_probs = torch.tensor(gmm_probs)
+alpha = torch.tensor(alpha)
+beta = torch.tensor(beta)
+
+plot_interval(gmm_probs, alpha, beta)
