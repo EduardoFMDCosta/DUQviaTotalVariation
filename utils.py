@@ -1,8 +1,11 @@
+from cmath import isinf
+from typing import Union
 import torch
 import itertools
 from copy import deepcopy
-
 from distributions import Gaussian
+from dynamics import Dynamics
+from optimization import gradient_descent
 from regions import HyperRectangle, Polytope
 
 
@@ -35,6 +38,74 @@ def uniform_grid(lower: torch.Tensor,
     grid = torch.stack(mesh, dim=-1).reshape(-1, d)
 
     return grid
+
+def inf_from_S_to_V(f: Dynamics,
+                    covariance: torch.Tensor,
+                    S: Union[HyperRectangle, torch.Tensor],
+                    V: Union[HyperRectangle, torch.Tensor]):
+
+    if torch.isinf(S.lower).any(): # inf_{R_unbounded} T(R_i) = 0
+        return 0.0
+
+    z_inf = gradient_descent(f, covariance, V, S, maximize=False)
+    return Gaussian(f(z_inf), covariance).compute_probabilities(V)
+
+
+def sup_from_S_to_V(f: Dynamics,
+                    covariance: torch.Tensor,
+                    S: Union[HyperRectangle, torch.Tensor],
+                    V: Union[HyperRectangle, torch.Tensor]):
+
+    if torch.isinf(S.lower).any() and torch.isinf(V.lower).any(): # sup_{R_unbounded} T(R_unbounded) = 1
+        return 1.0
+
+    z_sup = gradient_descent(f, covariance, V, S, maximize=True)
+    return Gaussian(f(z_sup), covariance).compute_probabilities(V)
+
+
+def get_inf_sup_for_target_set(f, covariance, partition, target_set):
+
+    inf_for_target_set, sup_for_target_set = [], []
+    for (lower, upper) in zip(partition.lower, partition.upper):
+
+        S = HyperRectangle(lower, upper)
+
+        inf_for_target_set.append(
+            inf_from_S_to_V(f, covariance, S, target_set)
+        )
+
+        sup_for_target_set.append(
+            sup_from_S_to_V(f, covariance, S, target_set)
+        )
+
+    return torch.tensor(inf_for_target_set), torch.tensor(sup_for_target_set)
+
+
+def get_inf_sup_for_partition(f, covariance, partition):
+
+    inf_for_partition_all, sup_for_partition_all = [], []
+    for (lower_target, upper_target) in zip(partition.lower, partition.upper):
+
+        target_set = HyperRectangle(lower_target, upper_target)
+
+        inf_for_partition, sup_for_partition = [], []
+        for (lower, upper) in zip(partition.lower, partition.upper):
+
+            S = HyperRectangle(lower, upper)
+
+            inf_for_partition.append(
+                inf_from_S_to_V(f, covariance, S, target_set)
+            )
+
+            sup_for_partition.append(
+                sup_from_S_to_V(f, covariance, S, target_set)
+            )
+
+        inf_for_partition_all.append(inf_for_partition)
+        sup_for_partition_all.append(sup_for_partition)
+
+    return torch.tensor(inf_for_partition_all), torch.tensor(sup_for_partition_all)
+
 
 
 def compute_inf_sup_kernel(f, covariance, regions, set):
