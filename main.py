@@ -4,9 +4,11 @@ from copy import deepcopy
 from dynamics import LinearDynamics
 from distributions import Gaussian, GaussianMixture
 from experiments import approximation_scheme_tv
+from optimization import gradient_descent
 from plotting import plot_interval
 from regions import HyperRectangle, HyperRectangularPartition
-from utils import compute_inf_sup_kernel, get_shell, get_shell_loc, uniform_grid, compute_kernel_at_locs, o_maximization
+from utils import compute_inf_sup_kernel, get_shell, get_shell_loc, uniform_grid, compute_kernel_at_locs, \
+    o_maximization, get_inf_sup_for_target_set, get_inf_sup_for_partition
 
 import matplotlib.pyplot as plt
 
@@ -22,19 +24,19 @@ if __name__ == '__main__':
     f = LinearDynamics(A)
 
     # Initial distribution
-    mean_initial = torch.Tensor([4, 4])
-    cov_initial = torch.eye(2)
+    mean_initial = torch.Tensor([2, 6])
+    cov_initial = 0.5 * torch.eye(2)
     initial_distribution = Gaussian(mean_initial, cov_initial)
 
     # Noise distribution
     mean_noise = torch.Tensor([0, 0])
-    cov_noise = 0.5 * torch.eye(2)
+    cov_noise = 0.1 * torch.eye(2)
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     # Define partition
     shell = torch.tensor([
-        [-6.,   -6.], 
-        [6.,    6. ]
+        [0.,   0.],
+        [8.,   8. ]
     ])
     loc_shell = get_shell_loc(shell)
     inner_locs = uniform_grid(shell[0], shell[1], 10)
@@ -42,15 +44,21 @@ if __name__ == '__main__':
     partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([-0.5, -0.5]), torch.tensor([0.5, 0.5]))
-    
+    unsafe_set = HyperRectangle(torch.tensor([4.8, 7.2]), torch.tensor([5.0, 7.6]))
+
+
+    # TESTING NEW INF / SUP COMPUTATION
+    inf_kernel_unsafe_set, sup_kernel_unsafe_set = get_inf_sup_for_target_set(f, cov_noise, partition, unsafe_set)
+    inf_kernel_regions, sup_kernel_regions = get_inf_sup_for_partition(f, cov_noise, partition)
+
+
     # Compute sup/inf_{z \in Ri} T(Rj | z) and sup/inf_{z \in Ri} T(U | z)
-    inf_kernel_regions, sup_kernel_regions, inf_kernel_unsafe_set, sup_kernel_unsafe_set = compute_inf_sup_kernel(
-        f, 
-        cov_noise, 
-        partition, 
-        unsafe_set
-    )
+    # inf_kernel_regions, sup_kernel_regions, inf_kernel_unsafe_set, sup_kernel_unsafe_set = compute_inf_sup_kernel(
+    #     f,
+    #     cov_noise,
+    #     partition,
+    #     unsafe_set
+    # )
     
     locs = partition.locs
     kernel_at_locs_regions, kernel_at_locs_unsafe_set = compute_kernel_at_locs(f, locs, cov_noise, partition, unsafe_set)
