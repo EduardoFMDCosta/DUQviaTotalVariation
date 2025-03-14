@@ -124,7 +124,7 @@ def compute_inf_sup_kernel(f, covariance, regions, set):
             sup_prob_regions[i] = kernel_sup.compute_probabilities(region_to) 
         
         # To the outer shell
-        shell = HyperRectangle(lower=regions.shell[0], upper=regions.shell[1])
+        shell = regions.shell
         furthest, closest = image.furthest_and_closest_from(shell.center)
         kernel_inf = Gaussian(closest, covariance)   # closest from center minimizes
         kernel_sup = Gaussian(furthest, covariance)  # furthest from center maximizes
@@ -146,7 +146,7 @@ def compute_inf_sup_kernel(f, covariance, regions, set):
         sup_probs_set.append(sup_prob_set)
 
     # Handle shell; TODO: the following can be removed if the function is optimized (initialized twice)
-    shell = HyperRectangle(lower=regions.shell[0], upper=regions.shell[1])
+    shell = regions.shell
     vertices_shell = shell.get_vertices()
     vertices_image_shell = f(vertices_shell)
     image_shell = Polytope(vertices_image_shell)   
