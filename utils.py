@@ -44,6 +44,7 @@ def inf_from_S_to_V(f: Dynamics,
                     S: Union[HyperRectangle, torch.Tensor],
                     V: Union[HyperRectangle, torch.Tensor]):
 
+    # TODO: this is conservative for inf_{R_unbounded} T(R_unbounded)
     if torch.isinf(S.lower).any(): # inf_{R_unbounded} T(R_i) = 0
         return 0.0
 
@@ -64,16 +65,12 @@ def sup_from_S_to_V(f: Dynamics,
 
 
 def get_inf_sup_for_target_set(f, covariance, partition, target_set):
-
     inf_for_target_set, sup_for_target_set = [], []
     for (lower, upper) in zip(partition.lower, partition.upper):
-
         S = HyperRectangle(lower, upper)
-
         inf_for_target_set.append(
             inf_from_S_to_V(f, covariance, S, target_set)
         )
-
         sup_for_target_set.append(
             sup_from_S_to_V(f, covariance, S, target_set)
         )
@@ -82,25 +79,18 @@ def get_inf_sup_for_target_set(f, covariance, partition, target_set):
 
 
 def get_inf_sup_for_partition(f, covariance, partition):
-
     inf_for_partition_all, sup_for_partition_all = [], []
-    for (lower_target, upper_target) in zip(partition.lower, partition.upper):
-
-        target_set = HyperRectangle(lower_target, upper_target)
-
+    for (lower, upper) in zip(partition.lower, partition.upper):
+        S = HyperRectangle(lower, upper)
         inf_for_partition, sup_for_partition = [], []
-        for (lower, upper) in zip(partition.lower, partition.upper):
-
-            S = HyperRectangle(lower, upper)
-
+        for (lower_target, upper_target) in zip(partition.lower, partition.upper):
+            target_set = HyperRectangle(lower_target, upper_target)
             inf_for_partition.append(
                 inf_from_S_to_V(f, covariance, S, target_set)
             )
-
             sup_for_partition.append(
                 sup_from_S_to_V(f, covariance, S, target_set)
             )
-
         inf_for_partition_all.append(inf_for_partition)
         sup_for_partition_all.append(sup_for_partition)
 
