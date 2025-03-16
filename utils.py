@@ -5,7 +5,7 @@ import itertools
 from copy import deepcopy
 from distributions import Gaussian
 from dynamics import Dynamics
-from optimization import gradient_descent
+from optimization import gradient_descent, project_to_closest_face
 from regions import HyperRectangle, Polytope
 
 
@@ -39,40 +39,57 @@ def uniform_grid(lower: torch.Tensor,
 
     return grid
 
-def inf_from_S_to_V(f: Dynamics,
-                    covariance: torch.Tensor,
-                    S: Union[HyperRectangle, torch.Tensor],
-                    V: Union[HyperRectangle, torch.Tensor]):
+def both_from_set_to_set_are_unbounded(from_set, to_set):
+    return torch.isinf(from_set.lower).any() and torch.isinf(to_set.lower).any()
 
-    # TODO: this is conservative for inf_{R_unbounded} T(R_unbounded)
-    if torch.isinf(S.lower).any(): # inf_{R_unbounded} T(R_i) = 0
-        return 0.0
+def only_from_set_is_unbounded(from_set, to_set):
+    return torch.isinf(from_set.lower).any() and not torch.isinf(to_set.lower).any()
 
-    z_inf = gradient_descent(f, covariance, V, S, maximize=False)
-    return Gaussian(f(z_inf), covariance).compute_probabilities(V)
+def only_to_set_is_unbounded(from_set, to_set):
+    return torch.isinf(to_set.lower).any() and not torch.isinf(from_set.lower).any()
+
+def optimize_from_set_to_set(f: Dynamics,
+                             covariance: torch.Tensor,
+                             from_set: HyperRectangle,
+                             to_set: HyperRectangle,
+                             shell: HyperRectangle = None,
+                             minimize: bool = False):
+
+    if minimize:
+        if both_from_set_to_set_are_unbounded(from_set, to_set): # inf_{R_inf} T(R_inf)
+            return 0.0 #TODO: conservative
+        elif only_from_set_is_unbounded(from_set, to_set): # inf_{R_inf} T(R_k) = 0
+            return 0.0
+        elif only_to_set_is_unbounded(from_set, to_set): # inf_{R_k} T(R_inf) = 0
+            return 0.0 #TODO: conservative
+        else:
+            z_inf = gradient_descent(f, covariance, from_set, to_set, minimize=True)
+            return Gaussian(f(z_inf), covariance).compute_probabilities(to_set)
+
+    else:
+        if both_from_set_to_set_are_unbounded(from_set, to_set): # sup_{R_inf} T(R_inf) = 1
+            return 1.0
+        elif only_from_set_is_unbounded(from_set, to_set): # sup_{R_inf} T(R_k)
+            z = project_to_closest_face(to_set.center, shell.lower, shell.upper)
+            return Gaussian(f(z), covariance).compute_probabilities(to_set) #TODO: conservative
+        elif only_to_set_is_unbounded(from_set, to_set): # sup_{R_k} T(R_inf)
+            #z = project_to_closest_face(to_set.center, shell.lower, shell.upper)
+            return 1 - Gaussian(f(from_set.center), covariance).compute_probabilities(shell) # TODO: FIX
+        else:
+            z_sup = gradient_descent(f, covariance, from_set, to_set, minimize=False)
+            return Gaussian(f(z_sup), covariance).compute_probabilities(to_set)
 
 
-def sup_from_S_to_V(f: Dynamics,
-                    covariance: torch.Tensor,
-                    S: Union[HyperRectangle, torch.Tensor],
-                    V: Union[HyperRectangle, torch.Tensor]):
-
-    if torch.isinf(S.lower).any() and torch.isinf(V.lower).any(): # sup_{R_unbounded} T(R_unbounded) = 1
-        return 1.0
-
-    z_sup = gradient_descent(f, covariance, V, S, maximize=True)
-    return Gaussian(f(z_sup), covariance).compute_probabilities(V)
-
-
-def get_inf_sup_for_target_set(f, covariance, partition, target_set):
+def get_inf_sup_for_target_set(f, covariance, partition, to_set):
     inf_for_target_set, sup_for_target_set = [], []
+    shell = partition.shell
     for (lower, upper) in zip(partition.lower, partition.upper):
-        S = HyperRectangle(lower, upper)
+        from_set = HyperRectangle(lower, upper)
         inf_for_target_set.append(
-            inf_from_S_to_V(f, covariance, S, target_set)
+            optimize_from_set_to_set(f, covariance, from_set, to_set, shell=shell, minimize=True)
         )
         sup_for_target_set.append(
-            sup_from_S_to_V(f, covariance, S, target_set)
+            optimize_from_set_to_set(f, covariance, from_set, to_set, shell=shell, minimize=False)
         )
 
     return torch.tensor(inf_for_target_set), torch.tensor(sup_for_target_set)
@@ -80,16 +97,17 @@ def get_inf_sup_for_target_set(f, covariance, partition, target_set):
 
 def get_inf_sup_for_partition(f, covariance, partition):
     inf_for_partition_all, sup_for_partition_all = [], []
+    shell = partition.shell
     for (lower, upper) in zip(partition.lower, partition.upper):
-        S = HyperRectangle(lower, upper)
+        from_set = HyperRectangle(lower, upper)
         inf_for_partition, sup_for_partition = [], []
         for (lower_target, upper_target) in zip(partition.lower, partition.upper):
-            target_set = HyperRectangle(lower_target, upper_target)
+            to_set = HyperRectangle(lower_target, upper_target)
             inf_for_partition.append(
-                inf_from_S_to_V(f, covariance, S, target_set)
+                optimize_from_set_to_set(f, covariance, from_set, to_set, shell=shell, minimize=True)
             )
             sup_for_partition.append(
-                sup_from_S_to_V(f, covariance, S, target_set)
+                optimize_from_set_to_set(f, covariance, from_set, to_set, shell=shell, minimize=False)
             )
         inf_for_partition_all.append(inf_for_partition)
         sup_for_partition_all.append(sup_for_partition)
