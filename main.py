@@ -18,25 +18,24 @@ if __name__ == '__main__':
     # System parameters
     A = torch.Tensor(
         [
-            [0.84, 0.10],
-            [0.05, 0.72]
+            [0.9]
         ])
     f = LinearDynamics(A)
 
     # Initial distribution
-    mean_initial = torch.Tensor([2, 6])
-    cov_initial = 0.5 * torch.eye(2)
+    mean_initial = torch.Tensor([2])
+    cov_initial = 0.5 * torch.eye(1)
     initial_distribution = Gaussian(mean_initial, cov_initial)
 
     # Noise distribution
-    mean_noise = torch.Tensor([0, 0])
-    cov_noise = 0.1 * torch.eye(2)
+    mean_noise = torch.Tensor([0])
+    cov_noise = 0.1 * torch.eye(1)
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     # Define partition
     shell = torch.tensor([
-        [0.,   0.],
-        [8.,   8. ]
+        [-2.],
+        [8.]
     ])
     loc_shell = get_shell_loc(shell)
     inner_locs = uniform_grid(shell[0], shell[1], 10)
@@ -44,7 +43,7 @@ if __name__ == '__main__':
     partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([4.8, 7.2]), torch.tensor([5.0, 7.6]))
+    unsafe_set = HyperRectangle(torch.tensor([3.0]), torch.tensor([5.0]))
 
 
     # TESTING NEW INF / SUP COMPUTATION
@@ -75,7 +74,7 @@ if __name__ == '__main__':
     mean_k = deepcopy(mean_initial)
     cov_k = deepcopy(cov_initial)
     means_gmm = f(locs)
-    for t in range(30):
+    for t in range(10):
         # Compute the true distribution for comparaison
         mean_k = torch.matmul(A, mean_k) + mean_noise
         cov_k = torch.matmul(A, cov_k)
@@ -93,18 +92,18 @@ if __name__ == '__main__':
         diff_unsafe = true_unsafe - approx_unsafe
 
         # Compute bounds
-        p_min = o_maximization(- inf_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)
-        p_max = o_maximization(sup_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)
+        #p_min = o_maximization(- inf_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)
+        #p_max = o_maximization(sup_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)
 
-        alpha_unsafe_set = torch.dot(inf_kernel_unsafe_set, p_min) - torch.dot(kernel_at_locs_unsafe_set, approx_probs)
-        beta_unsafe_set = torch.dot(sup_kernel_unsafe_set, p_max) - torch.dot(kernel_at_locs_unsafe_set, approx_probs)
+        alpha_unsafe_set = torch.dot(inf_kernel_unsafe_set, approx_probs + alphas_regions) - torch.dot(kernel_at_locs_unsafe_set, approx_probs)
+        beta_unsafe_set = torch.dot(sup_kernel_unsafe_set, approx_probs + betas_regions) - torch.dot(kernel_at_locs_unsafe_set, approx_probs)
 
         next_alphas_regions, next_betas_regions = torch.zeros(len(locs)), torch.zeros(len(locs))
         for i, (inf_kernel_region, sup_kernel_region) in enumerate(zip(inf_kernel_regions.T, sup_kernel_regions.T)):
-            p_min = o_maximization(- inf_kernel_region, approx_probs + alphas_regions, approx_probs + betas_regions)
-            p_max = o_maximization(sup_kernel_region, approx_probs + alphas_regions, approx_probs + betas_regions)
-            next_alphas_regions[i] += torch.dot(inf_kernel_region, p_min)
-            next_betas_regions[i] += torch.dot(sup_kernel_region, p_max)
+            #p_min = o_maximization(- inf_kernel_region, approx_probs + alphas_regions, approx_probs + betas_regions)
+            #p_max = o_maximization(sup_kernel_region, approx_probs + alphas_regions, approx_probs + betas_regions)
+            next_alphas_regions[i] += torch.dot(inf_kernel_region, approx_probs + alphas_regions)
+            next_betas_regions[i] += torch.dot(sup_kernel_region, approx_probs + betas_regions)
         next_alphas_regions -= kernel_at_locs_regions.T @ approx_probs
         next_betas_regions -= kernel_at_locs_regions.T @ approx_probs
         alphas_regions = next_alphas_regions
