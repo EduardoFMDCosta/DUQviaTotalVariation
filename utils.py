@@ -1,4 +1,3 @@
-from cmath import isinf
 from typing import Union
 import torch
 import itertools
@@ -60,8 +59,9 @@ def optimize_from_set_to_set(f: Dynamics,
             return 0.0 #TODO: conservative
         elif only_from_set_is_unbounded(from_set, to_set): # inf_{R_inf} T(R_k) = 0
             return 0.0
-        elif only_to_set_is_unbounded(from_set, to_set): # inf_{R_k} T(R_inf) = 0
-            return 0.0 #TODO: conservative
+        elif only_to_set_is_unbounded(from_set, to_set):
+            z_sup = gradient_descent(f, covariance, from_set, shell, minimize=False)
+            return 1 - Gaussian(f(z_sup), covariance).compute_probabilities(shell)
         else:
             z_inf = gradient_descent(f, covariance, from_set, to_set, minimize=True)
             return Gaussian(f(z_inf), covariance).compute_probabilities(to_set)
@@ -70,11 +70,10 @@ def optimize_from_set_to_set(f: Dynamics,
         if both_from_set_to_set_are_unbounded(from_set, to_set): # sup_{R_inf} T(R_inf) = 1
             return 1.0
         elif only_from_set_is_unbounded(from_set, to_set): # sup_{R_inf} T(R_k)
-            z = project_to_closest_face(to_set.center, shell.lower, shell.upper)
-            return Gaussian(f(z), covariance).compute_probabilities(to_set) #TODO: conservative
+            return 1.0 #TODO: conservative
         elif only_to_set_is_unbounded(from_set, to_set): # sup_{R_k} T(R_inf)
-            #z = project_to_closest_face(to_set.center, shell.lower, shell.upper)
-            return 1 - Gaussian(f(from_set.center), covariance).compute_probabilities(shell) # TODO: FIX
+            z_inf = gradient_descent(f, covariance, from_set, shell, minimize=True)
+            return 1 - Gaussian(f(z_inf), covariance).compute_probabilities(shell)
         else:
             z_sup = gradient_descent(f, covariance, from_set, to_set, minimize=False)
             return Gaussian(f(z_sup), covariance).compute_probabilities(to_set)
