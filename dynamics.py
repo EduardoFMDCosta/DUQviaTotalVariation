@@ -53,3 +53,13 @@ class LinearDynamics(Dynamics):
         self._global_lipschitz = torch.linalg.svd(weight).S[0]
 
         super(LinearDynamics, self).__init__(bp.FixedLinear(weight, bias))
+
+
+class SinusoidalDynamics(Dynamics):
+    def __init__(self, num_dims, **kwargs):
+        self.num_dims = num_dims
+        super(SinusoidalDynamics, self).__init__(bp.Sin())
+
+    @property
+    def global_lipschitz(self):
+        return 1.0

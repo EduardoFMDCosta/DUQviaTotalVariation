@@ -29,5 +29,19 @@
                 }
             }
         }
+    },
+    "SinusoidalDynamics": {
+        "dimensions": {
+          "2": {
+                "options": {
+                    "0": {
+                        "loc_initial_dist": [1.5, 2.5],
+                        "variance_initial_dist": [0.001, 0.02],
+                        "loc_noise_dist": [0.0, 0.0],
+                        "variance_noise_dist": [0.01, 0.01]
+                    }
+                }
+            }
+        }
     }
 }
