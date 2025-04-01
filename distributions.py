@@ -1,7 +1,7 @@
 import torch
 from torch.distributions import MultivariateNormal
 from abc import abstractmethod
-import probability_mass_computation as proba
+from probabilities import gaussian_probabilities
 from regions import HyperRectangularPartition, HyperRectangle
 from typing import Union
 
@@ -26,49 +26,21 @@ class Gaussian(Distributions):
         return mvn.sample((n_samples,))
 
     def compute_probabilities(self, regions: Union[HyperRectangularPartition, HyperRectangle]):
-
-        lower = regions.lower
-        upper = regions.upper
-
-        if lower.dim() == 1:
-            lower = lower.unsqueeze(0)
-            upper = upper.unsqueeze(0)
-
-        sigma = torch.sqrt(torch.diag(self.covariance))
-
-        lower_norm = (lower - self.mean) / sigma
-        upper_norm = (upper - self.mean) / sigma
-
-        normal = torch.distributions.Normal(0.0, 1.0)
-        lower_cdf = normal.cdf(lower_norm)
-        upper_cdf = normal.cdf(upper_norm)
-
-        probs = torch.prod(upper_cdf - lower_cdf, dim=1)
-
-        if isinstance(regions, HyperRectangularPartition):
-            probs[-1] = 1 - probs[:-1].sum() # Last region represents the complement of shell
-
-        return probs
+        return gaussian_probabilities(self.mean, self.covariance, regions)
 
 
 class GaussianMixture(Distributions):
-    def __init__(self, means: torch.Tensor, covs: torch.Tensor, weights: torch.Tensor):
+    def __init__(self, means: torch.Tensor, covariance: torch.Tensor, weights: torch.Tensor):
         self.means = means
-        self.covariances = covs
+        self.covariance = covariance
         self.weights = weights
 
     def __call__(self, n_samples: int):
         chosen_components = torch.multinomial(self.weights, n_samples, replacement=True)
-        gaussian_distributions = MultivariateNormal(self.means, self.covariances)
+        gaussian_distributions = MultivariateNormal(self.means, self.covariance)
         samples = gaussian_distributions.sample((n_samples,))
         return samples[torch.arange(n_samples), chosen_components]
 
     def compute_probabilities(self, regions):
-        # TODO: can be optimized because objects are created 
-        #       each time probabilities are computed
-        probs = [
-            Gaussian(mean, cov).compute_probabilities(regions)
-            for mean, cov in zip(self.means, self.covariances)
-        ]
-        probs = torch.stack(probs, dim=0)
-        return torch.matmul(self.weights, probs)
+        probs = gaussian_probabilities(self.means, self.covariance, regions)
+        return torch.sum(probs * self.weights, dim=1)
