@@ -1,7 +1,7 @@
 import torch
 from copy import deepcopy
 
-from dynamics import LinearDynamics
+from dynamics import LinearDynamics, SinusoidalDynamics
 from distributions import Gaussian, GaussianMixture
 from experiments import approximation_scheme_tv
 from optimization import gradient_descent
@@ -21,6 +21,7 @@ if __name__ == '__main__':
             [0.9]
         ])
     f = LinearDynamics(A)
+    #f = SinusoidalDynamics(1)
 
     # Initial distribution
     mean_initial = torch.Tensor([2])
@@ -73,7 +74,7 @@ if __name__ == '__main__':
     mean_k = deepcopy(mean_initial)
     cov_k = deepcopy(cov_initial)
     means_gmm = f(locs)
-    for t in range(100):
+    for t in range(10):
         # Compute the true distribution for comparaison
         mean_k = torch.matmul(A, mean_k) + mean_noise
         cov_k = torch.matmul(A, cov_k)
@@ -82,7 +83,7 @@ if __name__ == '__main__':
 
         # Update approximation
         approx_probs = approx_distribution.compute_probabilities(partition)
-        covs_noise = cov_noise.unsqueeze(0).expand(means_gmm.size(0), -1, -1)
+        covs_noise = cov_noise
         approx_distribution = GaussianMixture(means_gmm, covs_noise, approx_probs)
 
         # Compute true error
