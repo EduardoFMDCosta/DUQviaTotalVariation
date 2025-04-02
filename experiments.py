@@ -5,7 +5,7 @@ from bounds import compute_bound_TV
 from distributions import Gaussian, GaussianMixture
 from dynamics import Dynamics
 from regions import HyperRectangularPartition
-from utils import get_shell, get_shell_loc, uniform_grid
+from utils import get_shell, get_shell_loc, uniform_grid, add_midpoints, make_grid_from_locs
 
 
 def propagate(f: Dynamics,
@@ -13,8 +13,8 @@ def propagate(f: Dynamics,
               locs: torch.Tensor,
               noise_distribution: Gaussian):
 
-    covs_noise = noise_distribution.covariance.unsqueeze(0).expand(locs.size(0), -1, -1)
-    mixture_distribution = GaussianMixture(f(locs), covs_noise, weights)
+    cov_noise = noise_distribution.covariance
+    mixture_distribution = GaussianMixture(f(locs), cov_noise, weights)
 
     return mixture_distribution
 
@@ -33,7 +33,7 @@ def approximation_scheme_tv(f: Dynamics,
         if t == 0:
             mixture_distribution = initial_distribution
         else:
-            mixture_distribution = propagate(f, probs, locs, noise_distribution)
+            mixture_distribution = propagate(f, probs, partition.locs, noise_distribution)
 
 
         mixtures.append(mixture_distribution)
@@ -43,15 +43,17 @@ def approximation_scheme_tv(f: Dynamics,
             shell = get_shell(samples)
             loc_shell = get_shell_loc(shell)
 
-            inner_locs = uniform_grid(shell[0], shell[1], initial_grid_size) #TODO: Change to Steven's discretization tool?
+            inner_locs = uniform_grid(shell[0], shell[1], initial_grid_size)
             partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
-
-            locs = partition.locs
             probs = mixture_distribution.compute_probabilities(partition)
 
-            tv_bound = compute_bound_TV(f, probs, noise_distribution, partition)
+            contributions, tv_bound = compute_bound_TV(f, probs, noise_distribution, partition)
 
-            #TODO: Add refinement algorithm
+            # Refinement
+            while len(partition.lower) < 5e3:
+                partition = partition.refine(contributions=contributions, threshold=1e-4, pareto=0.5)
+                probs = mixture_distribution.compute_probabilities(partition)
+                contributions, tv_bound = compute_bound_TV(f, probs, noise_distribution, partition)
 
             tv_bounds.append(tv_bound.item())
 
