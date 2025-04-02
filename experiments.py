@@ -5,7 +5,7 @@ from bounds import compute_bound_TV
 from distributions import Gaussian, GaussianMixture
 from dynamics import Dynamics
 from regions import HyperRectangularPartition
-from utils import get_shell, get_shell_loc, uniform_grid, add_midpoints, make_grid_from_locs
+from utils import get_shell, get_shell_loc, uniform_grid
 
 
 def propagate(f: Dynamics,

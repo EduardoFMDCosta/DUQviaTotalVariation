@@ -1,14 +1,12 @@
 import torch
 from copy import deepcopy
-
 from dynamics import LinearDynamics, SinusoidalDynamics
 from distributions import Gaussian, GaussianMixture
 from experiments import approximation_scheme_tv
 from optimization import gradient_descent
 from plotting import plot_interval
 from regions import HyperRectangle, HyperRectangularPartition
-from utils import compute_inf_sup_kernel, get_shell, get_shell_loc, uniform_grid, compute_kernel_at_locs, \
-    o_maximization, get_inf_sup_for_target_set, get_inf_sup_for_partition
+from utils import compute_inf_sup_kernel, get_shell, get_shell_loc, uniform_grid, compute_kernel_at_locs, o_maximization, get_inf_sup_for_target_set, get_inf_sup_for_partition
 
 import matplotlib.pyplot as plt
 
