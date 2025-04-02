@@ -183,3 +183,31 @@ class HyperRectangularPartition:
     @property
     def width(self):
         return self.upper - self.lower
+
+    def refine(self, contributions: torch.Tensor, threshold: float = 1e-1, pareto: float = 0.3):
+
+        locs_inner = self._locs_inner
+        lower_inner = self.lower[:-1]
+        upper_inner = self.upper[:-1]
+
+        # Compute the threshold for the top pareto%
+        top_k = max(1, int(pareto * contributions.numel()))
+        pareto_threshold = torch.topk(contributions, top_k).values.min()
+
+        mask = (contributions[:-1] > threshold) & (contributions[:-1] > pareto_threshold)
+
+        # Add mid-points in diagonal if contribution condition is met
+        mid_low = (locs_inner[mask] + lower_inner[mask]) / 2
+        mid_high = (locs_inner[mask] + upper_inner[mask]) / 2
+        locs_expanded = torch.cat((locs_inner, mid_low, mid_high), dim=0) #TODO: Should we add more points here?
+
+        # Generate grid
+        n, d = locs_expanded.shape
+        unique_vals = [torch.unique(locs_expanded[:, i]) for i in range(d)]
+        mesh = torch.meshgrid(*unique_vals, indexing="ij")
+        grid = torch.stack([m.flatten() for m in mesh], dim=-1)
+
+        return HyperRectangularPartition(grid, self._loc_shell, self._shell)
+
+
+
