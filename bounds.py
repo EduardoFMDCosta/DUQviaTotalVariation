@@ -26,6 +26,7 @@ def compute_bound_TV(f: Dynamics, mixture_probs: torch.Tensor, noise_distributio
     h = compute_h(f, noise_distribution, partition)
     erf_h = erf(h)
 
-    bound = torch.dot(erf_h, mixture_probs)
+    contributions = erf_h * mixture_probs
+    bound = contributions.sum()
 
-    return bound
+    return contributions, bound
