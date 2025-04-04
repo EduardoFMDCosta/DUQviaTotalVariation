@@ -5,8 +5,11 @@ from copy import deepcopy
 from distributions import Gaussian
 from dynamics import Dynamics
 from optimization import gradient_descent, project_to_closest_face
-from regions import HyperRectangle, Polytope
+from regions import HyperRectangle, Polytope, HyperRectangularPartition
+import bound_propagation as bp
+import torch.distributions as dist
 
+factory = bp.BoundModelFactory()
 
 def get_shell(samples: torch.Tensor):
 
@@ -37,6 +40,61 @@ def uniform_grid(lower: torch.Tensor,
     grid = torch.stack(mesh, dim=-1).reshape(-1, d)
 
     return grid
+
+
+def bound_transition_kernel(f: Dynamics,
+                            partition: HyperRectangularPartition,
+                            target: Union[HyperRectangularPartition, HyperRectangle],
+                            covariance: torch.Tensor,
+                            supremum: bool = True):
+
+    # Instantiate Normal distribution
+    normal = dist.Normal(0, 1)
+    std_devs = torch.sqrt(torch.diag(covariance))
+
+    # Create hypercubic envelope for f(R_from), denoted \barR_from
+    net = factory.build(f)
+    ibp = net.ibp(bp.HyperRectangle(partition.lower, partition.upper))
+    from_lower = ibp.lower
+    from_upper = ibp.upper
+
+    # Get centers of target
+    target_centers = target.center.unsqueeze(0) if target.center.dim() == 1 else target.center
+    target_lower = target.lower.unsqueeze(0) if target.center.dim() == 1 else target.lower
+    target_upper = target.upper.unsqueeze(0) if target.center.dim() == 1 else target.upper
+
+    # Compute distances from R_target centers to lower / upper of R_from
+    if supremum:
+        opt_means = torch.clamp(target_centers.unsqueeze(0), min=from_lower.unsqueeze(1), max=from_upper.unsqueeze(1))
+    else: # Compute inf
+        dist_lower = torch.abs(target_centers[None, :, :] - from_lower[:, None, :])
+        dist_upper = torch.abs(target_centers[None, :, :] - from_upper[:, None, :])
+        opt_means = torch.where(dist_lower > dist_upper, from_lower[:, None, :], from_upper[:, None, :])
+
+    lower_std = (target_lower - opt_means) / std_devs
+    upper_std = (target_upper - opt_means) / std_devs
+
+    lower_std[lower_std.isnan()] = float('inf')
+    upper_std[upper_std.isnan()] = float('inf')
+
+    # Compute Gaussian probs for each pair (\barR_from, R_target)
+    lower_cdf = normal.cdf(lower_std)
+    upper_cdf = normal.cdf(upper_std)
+    probs_per_dimension = upper_cdf - lower_cdf
+    probs = probs_per_dimension.prod(dim=-1)
+
+    # Separate treatment for unbounded region
+    if isinstance(target, HyperRectangularPartition):
+        if supremum:
+            probs[-1, :] = 0.01
+            probs[:, -1] = 0.01
+            probs[-1, -1] = 1.0
+        else:
+            probs[-1, :] = 0.0
+            probs[:, -1] = 0.0
+
+    return probs
+
 
 def both_from_set_to_set_are_unbounded(from_set, to_set):
     return torch.isinf(from_set.lower).any() and torch.isinf(to_set.lower).any()
