@@ -43,4 +43,4 @@ class GaussianMixture(Distributions):
 
     def compute_probabilities(self, regions):
         probs = gaussian_probabilities(self.means, self.covariance, regions)
-        return torch.sum(probs * self.weights, dim=1)
+        return torch.sum(probs * self.weights.unsqueeze(1), dim=0)
