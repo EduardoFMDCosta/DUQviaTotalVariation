@@ -6,7 +6,8 @@ from experiments import approximation_scheme_tv
 from optimization import gradient_descent
 from plotting import plot_interval
 from regions import HyperRectangle, HyperRectangularPartition
-from utils import compute_inf_sup_kernel, get_shell, get_shell_loc, uniform_grid, compute_kernel_at_locs, o_maximization, get_inf_sup_for_target_set, get_inf_sup_for_partition
+from utils import compute_inf_sup_kernel, get_shell, get_shell_loc, uniform_grid, compute_kernel_at_locs, \
+    o_maximization, get_inf_sup_for_target_set, get_inf_sup_for_partition, bound_transition_kernel, transition_kernel
 
 import matplotlib.pyplot as plt
 
@@ -33,8 +34,8 @@ if __name__ == '__main__':
 
     # Define partition
     shell = torch.tensor([
-        [-4.],
-        [6.]
+        [-8.],
+        [8.]
     ])
     loc_shell = get_shell_loc(shell)
     inner_locs = uniform_grid(shell[0], shell[1], 100)
@@ -42,12 +43,20 @@ if __name__ == '__main__':
     partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([3.0]), torch.tensor([5.0]))
+    unsafe_set = HyperRectangle(torch.tensor([3.0]).unsqueeze(0), torch.tensor([5.0]).unsqueeze(0))
 
     # TESTING NEW INF / SUP COMPUTATION
-    inf_kernel_unsafe_set, sup_kernel_unsafe_set = get_inf_sup_for_target_set(f, cov_noise, partition, unsafe_set)
-    inf_kernel_regions, sup_kernel_regions = get_inf_sup_for_partition(f, cov_noise, partition)
+    #inf_kernel_unsafe_set, sup_kernel_unsafe_set = get_inf_sup_for_target_set(f, cov_noise, partition, unsafe_set)
+    #inf_kernel_regions, sup_kernel_regions = get_inf_sup_for_partition(f, cov_noise, partition)
 
+    inf_kernel_unsafe_set = bound_transition_kernel(f, partition, unsafe_set, cov_noise, supremum=False).squeeze()
+    sup_kernel_unsafe_set = bound_transition_kernel(f, partition, unsafe_set, cov_noise, supremum=True).squeeze()
+    inf_kernel_regions = bound_transition_kernel(f, partition, partition, cov_noise, supremum=False)
+    sup_kernel_regions = bound_transition_kernel(f, partition, partition, cov_noise, supremum=True)
+
+    locs = partition.locs
+    kernel_at_locs_unsafe_set = transition_kernel(f, locs, unsafe_set, cov_noise).squeeze()
+    kernel_at_locs_regions = transition_kernel(f, locs, partition, cov_noise)
 
     # Compute sup/inf_{z \in Ri} T(Rj | z) and sup/inf_{z \in Ri} T(U | z)
     # inf_kernel_regions, sup_kernel_regions, inf_kernel_unsafe_set, sup_kernel_unsafe_set = compute_inf_sup_kernel(
@@ -56,9 +65,6 @@ if __name__ == '__main__':
     #     partition,
     #     unsafe_set
     # )
-    
-    locs = partition.locs
-    kernel_at_locs_regions, kernel_at_locs_unsafe_set = compute_kernel_at_locs(f, locs, cov_noise, partition, unsafe_set)
 
     # Initialize approximation distribution
     approx_distribution = deepcopy(initial_distribution)
@@ -72,7 +78,7 @@ if __name__ == '__main__':
     mean_k = deepcopy(mean_initial)
     cov_k = deepcopy(cov_initial)
     means_gmm = f(locs)
-    for t in range(10):
+    for t in range(100):
         # Compute the true distribution for comparaison
         mean_k = torch.matmul(A, mean_k) + mean_noise
         cov_k = torch.matmul(A, cov_k)
@@ -113,6 +119,7 @@ if __name__ == '__main__':
         ubs.append(beta_unsafe_set)
 
         print("(t = {}) alpha = {}, true = {}, beta = {}".format(t, alpha_unsafe_set, diff_unsafe[0], beta_unsafe_set))
+        print(betas_regions.max())
 
 lbs, ts, aps, ubs = torch.tensor(lbs), torch.tensor(ts), torch.tensor(aps), torch.tensor(ubs)
 plot_interval(aps, lbs, ubs, ts)
