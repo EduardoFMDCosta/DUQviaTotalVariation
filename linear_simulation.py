@@ -12,32 +12,33 @@ if __name__ == '__main__':
     # System parameters
     A = torch.Tensor(
         [
-            [0.9]
+            [0.5, 0.2], 
+            [-0.1, 0.7]
         ])
     f = LinearDynamics(A)
 
     # Initial distribution
-    mean_initial = torch.Tensor([2])
-    cov_initial = 0.5 * torch.eye(1)
+    mean_initial = torch.Tensor([6, 6])
+    cov_initial = 0.5 * torch.eye(2)
     initial_distribution = Gaussian(mean_initial, cov_initial)
 
     # Noise distribution
-    mean_noise = torch.Tensor([0])
-    cov_noise = 0.1 * torch.eye(1)
+    mean_noise = torch.Tensor([0, 0])
+    cov_noise = 0.1 * torch.eye(2)
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     # Define partition
     shell = torch.tensor([
-        [-10.],
-        [10.]
+        [-10., -10.],
+        [10., 10.]
     ])
     loc_shell = get_shell_loc(shell)
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([3.0]).unsqueeze(0), torch.tensor([5.0]).unsqueeze(0))
+    unsafe_set = HyperRectangle(torch.tensor([1.5, 1.5]).unsqueeze(0), torch.tensor([2.0, 2.0]).unsqueeze(0))
 
     # Define initial partition
-    inner_locs = uniform_grid(shell[0], shell[1], 100)
+    inner_locs = uniform_grid(shell[0], shell[1], 10)
     partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
 
     # Compute initial distribution
@@ -51,12 +52,15 @@ if __name__ == '__main__':
     # For plotting
     lbs, ts, aps, ubs = [], [], [], []
 
-    for t in range(25):
+    for t in range(10):
 
         # Compute alpha and beta for unsafe set
         inf_kernel_unsafe_set = bound_transition_kernel(f, partition, unsafe_set, cov_noise, supremum=False).squeeze()
         sup_kernel_unsafe_set = bound_transition_kernel(f, partition, unsafe_set, cov_noise, supremum=True).squeeze()
         kernel_at_locs_unsafe_set = transition_kernel(f, partition.locs, unsafe_set, cov_noise).squeeze()
+
+        # Compute approx unsafe
+        approx_unsafe = approx_distribution.compute_probabilities(unsafe_set).squeeze()
 
         # Compute bounds for unsafe set
         p_min = o_maximization(- inf_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)
@@ -71,7 +75,7 @@ if __name__ == '__main__':
 
         print(f'Locs before refinement for t={t}: {new_partition.locs}')
 
-        for refinement in range(6):
+        for refinement in range(3):
             new_partition = refined_partition
             inf_kernel_regions = bound_transition_kernel(f, partition, new_partition, cov_noise, supremum=False)
             sup_kernel_regions = bound_transition_kernel(f, partition, new_partition, cov_noise, supremum=True)
@@ -95,8 +99,7 @@ if __name__ == '__main__':
         betas_regions = next_betas_regions
 
         lbs.append(alpha_unsafe_set)
-        #ts.append(true_unsafe)
-        #aps.append(approx_unsafe)
+        aps.append(approx_unsafe)
         ubs.append(beta_unsafe_set)
 
         # Update approximation
@@ -104,4 +107,6 @@ if __name__ == '__main__':
         approx_probs = approx_distribution.compute_probabilities(partition)
         approx_distribution = GaussianMixture(f(partition.locs), cov_noise, approx_probs)
 
+    lbs, aps, ubs = torch.tensor(lbs), torch.tensor(aps), torch.tensor(ubs)
     print(f'betas for unsafe set: {ubs}')
+    plot_interval(aps, lbs, ubs)
