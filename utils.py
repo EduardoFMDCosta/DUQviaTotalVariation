@@ -3,13 +3,11 @@ import torch
 import itertools
 from copy import deepcopy
 from distributions import Gaussian
-from dynamics import Dynamics
+from dynamics import Dynamics, factory
 from optimization import gradient_descent, project_to_closest_face
 from probabilities import kernel_probs_given_optimal_means, gaussian_probabilities
 from regions import HyperRectangle, Polytope, HyperRectangularPartition
 import bound_propagation as bp
-
-factory = bp.BoundModelFactory()
 
 def get_shell(samples: torch.Tensor):
 
