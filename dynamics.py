@@ -63,54 +63,89 @@ class SinusoidalDynamics(Dynamics):
     def global_lipschitz(self):
         return 1.0
 
+# class DubinsModule(torch.nn.Module):
+#     def __init__(self, h, v, u):
+#         super().__init__()
+#         self.h = h
+#         self.v = v
+#         self.u = u 
     
-class DubinsModule(torch.nn.Module):
-    def __init__(self, h, v, u):
-        super().__init__()
-        self.h = h
-        self.v = v
-        self.u = u 
-    
-    # Directly implented with Euler scheme
-    def forward(self, x):
-        x0 = x[..., 0] + self.h * self.v * x[..., 2].sin()
-        x1 = x[..., 1] + self.h * self.v * x[..., 2].cos()
-        x2 = x[..., 2] + self.h * self.u
-        x = torch.stack((x0, x1, x2), dim=-1)
-        return x
+#     # Directly implented with Euler scheme
+#     def forward(self, x):
+#         x0 = x[..., 0] + self.h * self.v * x[..., 2].sin()
+#         x1 = x[..., 1] + self.h * self.v * x[..., 2].cos()
+#         x2 = x[..., 2] + self.h * self.u
+#         x = torch.stack((x0, x1, x2), dim=-1)
+#         return x
 
 
-class DubinsBound(bp.BoundModule):
-    def __init__(self, model, factory, **kwargs):
-        super().__init__(model, factory, **kwargs)
-        self.h = model.h
-        self.v = model.v
-        self.u = model.u
+# class DubinsBound(bp.BoundModule):
+#     def __init__(self, model, factory, **kwargs):
+#         super().__init__(model, factory, **kwargs)
+#         self.h = model.h
+#         self.v = model.v
+#         self.u = model.u
 
-    # The implementation of the following abstract classes is not needed for ibp propagation
-    def propagate_size(self, in_size):
-        raise NotImplementedError()
-    def crown_backward(self, linear_bounds, optimize):
-        raise NotImplementedError()
-    @property
-    def need_relaxation(self):
-        raise NotImplementedError()
+#     # The implementation of the following abstract classes is not needed for ibp propagation
+#     def propagate_size(self, in_size):
+#         raise NotImplementedError()
+#     def crown_backward(self, linear_bounds, optimize):
+#         raise NotImplementedError()
+#     @property
+#     def need_relaxation(self):
+#         raise NotImplementedError()
 
-    def ibp_forward(self, bounds, save_relaxation=False, save_input_bounds=False):
-        x0_lb = bounds.lower[..., 0] - self.h * self.v
-        x1_lb = bounds.lower[..., 1] - self.h * self.v
-        x2_lb = bounds.lower[..., 2] + self.h * self.u
-        lower_forward = torch.stack((x0_lb, x1_lb, x2_lb), dim=-1)
+#     def ibp_forward(self, bounds, save_relaxation=False, save_input_bounds=False):
+#         x0_lb = bounds.lower[..., 0] - self.h * self.v
+#         x1_lb = bounds.lower[..., 1] - self.h * self.v
+#         x2_lb = bounds.lower[..., 2] + self.h * self.u
+#         lower_forward = torch.stack((x0_lb, x1_lb, x2_lb), dim=-1)
 
-        x0_ub = bounds.upper[..., 0] + self.h * self.v
-        x1_ub = bounds.upper[..., 1] + self.h * self.v
-        x2_ub = bounds.upper[..., 2] + self.h * self.u
-        upper_forward = torch.stack((x0_ub, x1_ub, x2_ub), dim=-1)
+#         x0_ub = bounds.upper[..., 0] + self.h * self.v
+#         x1_ub = bounds.upper[..., 1] + self.h * self.v
+#         x2_ub = bounds.upper[..., 2] + self.h * self.u
+#         upper_forward = torch.stack((x0_ub, x1_ub, x2_ub), dim=-1)
 
-        return bp.IntervalBounds(bounds.region, lower_forward, upper_forward)  
+#         return bp.IntervalBounds(bounds.region, lower_forward, upper_forward)  
     
 
 class DubinsDynamics(Dynamics):
-    def __init__(self, h, v, u,  **kwargs):       
-        factory.register(DubinsModule, DubinsBound) # Register (DubinsModule, DubinsBound) only if needed    
-        super(DubinsDynamics, self).__init__(DubinsModule(h, v, u)) 
+    def __init__(self, velocity: float = 5.0, u: float = 2.0, h: float = 0.3, **kwargs):
+        self.num_dims = 3
+        self.velocity = velocity
+        self.u = u
+        self.h = h
+
+        linear_part = bp.FixedLinear(
+            torch.tensor([
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0]
+            ]),
+            torch.tensor([0.0, 0.0, h * u])
+        )
+
+        trig_part = torch.nn.Sequential(
+            bp.FixedLinear(
+                torch.tensor([
+                    [0.0, 0.0, 1.0],
+                    [0.0, 0.0, 1.0],
+                    [0.0, 0.0, 0.0]
+                ]),
+                torch.tensor([torch.pi / 2, 0.0, 0.0])
+                ),
+            bp.Sin(),
+            bp.FixedLinear(
+                torch.tensor([
+                    [h * velocity, 0.0, 0.0],
+                    [0.0, h * velocity, 0.0],
+                    [0.0, 0.0, 0.0]
+                ]),
+                torch.tensor([0.0, 0.0, 0.0])
+            ),
+        )
+ 
+        super(DubinsDynamics, self).__init__(
+            bp.Parallel(linear_part, trig_part),
+            bp.VectorAdd(),
+        )

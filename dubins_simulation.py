@@ -9,7 +9,7 @@ from utils import get_shell_loc, uniform_grid, compute_kernel_at_locs, o_maximiz
 if __name__ == '__main__':
     torch.manual_seed(0)
 
-    f = DubinsDynamics(0.3, 5, 1 / 0.5)
+    f = DubinsDynamics()
 
     # Initial distribution
     mean_initial = torch.Tensor([0, 0, 0])
@@ -23,16 +23,16 @@ if __name__ == '__main__':
 
     # Define partition
     shell = torch.tensor([
-        [-4., -4., -10.],
-        [10., 10., 10.]
+        [-4., -4., 0.],
+        [10., 10., 2 * torch.pi]
     ])
     loc_shell = get_shell_loc(shell)
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([3.5, 2.0, -torch.inf]).unsqueeze(0), torch.tensor([4.5, 3.0, torch.inf]).unsqueeze(0))
+    unsafe_set = HyperRectangle(torch.tensor([3.5, 2.0, - torch.inf]).unsqueeze(0), torch.tensor([4.5, 3.0, torch.inf]).unsqueeze(0))
 
     # Define initial partition
-    inner_locs = uniform_grid(shell[0], shell[1], 2)
+    inner_locs = uniform_grid(shell[0], shell[1], 10)
     partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
 
     # Compute initial distribution
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # For plotting
     lbs, ts, aps, ubs = [], [], [], []
 
-    for t in range(10):
+    for t in range(20):
 
         # Compute alpha and beta for unsafe set
         inf_kernel_unsafe_set = bound_transition_kernel(f, partition, unsafe_set, cov_noise, supremum=False).squeeze()
@@ -63,13 +63,13 @@ if __name__ == '__main__':
         beta_unsafe_set = torch.dot(sup_kernel_unsafe_set, p_max) - torch.dot(kernel_at_locs_unsafe_set, approx_probs)
 
         # Define new partition
-        new_inner_locs = uniform_grid(shell[0], shell[1], 10)
+        new_inner_locs = uniform_grid(shell[0], shell[1], 3)
         new_partition = HyperRectangularPartition(new_inner_locs, loc_shell, shell)
         refined_partition = deepcopy(new_partition)
 
         # print(f'Locs before refinement for t={t}: {new_partition.locs}')
 
-        for refinement in range(3):
+        for refinement in range(2):
             new_partition = refined_partition
             inf_kernel_regions = bound_transition_kernel(f, partition, new_partition, cov_noise, supremum=False)
             sup_kernel_regions = bound_transition_kernel(f, partition, new_partition, cov_noise, supremum=True)
@@ -77,6 +77,10 @@ if __name__ == '__main__':
 
             print(inf_kernel_regions[inf_kernel_regions > kernel_at_locs_regions])
             print(kernel_at_locs_regions[inf_kernel_regions > kernel_at_locs_regions])
+            print()
+
+            print(sup_kernel_regions[sup_kernel_regions < kernel_at_locs_regions])
+            print(kernel_at_locs_regions[sup_kernel_regions < kernel_at_locs_regions])
             print()
 
             next_alphas_regions, next_betas_regions = torch.zeros(len(new_partition.locs)), torch.zeros(len(new_partition.locs))
