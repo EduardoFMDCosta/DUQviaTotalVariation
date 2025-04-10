@@ -29,7 +29,7 @@ def gaussian_probabilities(means: torch.Tensor,
     if probs.shape[0] == 1:
         probs = probs.squeeze(0) # Squeeze it back to (n,) if means represent a sole Gaussian
 
-    return probs
+    return torch.clamp(probs, 0, 1)
 
 
 def kernel_probs_given_optimal_means(means_for_target: torch.Tensor,
