@@ -9,12 +9,11 @@ class Dynamics(torch.nn.Sequential):
     num_dims = None
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  
 
     @torch.no_grad()
     def compute_centralized_ibp(self,
                                 partition: HyperRectangularPartition) -> HyperRectangle:
-
         net = factory.build(self)
         ibp =  net.ibp(bp.HyperRectangle(partition.lower, partition.upper))
 
@@ -63,3 +62,55 @@ class SinusoidalDynamics(Dynamics):
     @property
     def global_lipschitz(self):
         return 1.0
+
+    
+class DubinsModule(torch.nn.Module):
+    def __init__(self, h, v, u):
+        super().__init__()
+        self.h = h
+        self.v = v
+        self.u = u 
+    
+    # Directly implented with Euler scheme
+    def forward(self, x):
+        x0 = x[..., 0] + self.h * self.v * x[..., 2].sin()
+        x1 = x[..., 1] + self.h * self.v * x[..., 2].cos()
+        x2 = x[..., 2] + self.h * self.u
+        x = torch.stack((x0, x1, x2), dim=-1)
+        return x
+
+
+class DubinsBound(bp.BoundModule):
+    def __init__(self, model, factory, **kwargs):
+        super().__init__(model, factory, **kwargs)
+        self.h = model.h
+        self.v = model.v
+        self.u = model.u
+
+    # The implementation of the following abstract classes is not needed for ibp propagation
+    def propagate_size(self, in_size):
+        raise NotImplementedError()
+    def crown_backward(self, linear_bounds, optimize):
+        raise NotImplementedError()
+    @property
+    def need_relaxation(self):
+        raise NotImplementedError()
+
+    def ibp_forward(self, bounds, save_relaxation=False, save_input_bounds=False):
+        x0_lb = bounds.lower[..., 0] - self.h * self.v
+        x1_lb = bounds.lower[..., 1] - self.h * self.v
+        x2_lb = bounds.lower[..., 2] + self.h * self.u
+        lower_forward = torch.stack((x0_lb, x1_lb, x2_lb), dim=-1)
+
+        x0_ub = bounds.upper[..., 0] + self.h * self.v
+        x1_ub = bounds.upper[..., 1] + self.h * self.v
+        x2_ub = bounds.upper[..., 2] + self.h * self.u
+        upper_forward = torch.stack((x0_ub, x1_ub, x2_ub), dim=-1)
+
+        return bp.IntervalBounds(bounds.region, lower_forward, upper_forward)  
+    
+
+class DubinsDynamics(Dynamics):
+    def __init__(self, h, v, u,  **kwargs):       
+        factory.register(DubinsModule, DubinsBound) # Register (DubinsModule, DubinsBound) only if needed    
+        super(DubinsDynamics, self).__init__(DubinsModule(h, v, u)) 
