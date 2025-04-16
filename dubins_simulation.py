@@ -1,10 +1,10 @@
 import torch
 from copy import deepcopy
-from dynamics import LinearDynamics, SinusoidalDynamics, DubinsDynamics
+from dynamics import DubinsDynamics
 from distributions import Gaussian, GaussianMixture
 from plotting import plot_interval
 from regions import HyperRectangle, HyperRectangularPartition
-from utils import get_shell_loc, uniform_grid, compute_kernel_at_locs, o_maximization, bound_transition_kernel, transition_kernel
+from utils import get_shell_loc, uniform_grid, o_maximization, bound_transition_kernel, transition_kernel
 
 if __name__ == '__main__':
     torch.manual_seed(0)
@@ -18,21 +18,21 @@ if __name__ == '__main__':
 
     # Noise distribution
     mean_noise = torch.Tensor([0, 0, 0])
-    cov_noise = torch.diag(torch.Tensor([0.06, 0.06, 0.01]))
+    cov_noise = torch.diag(torch.Tensor([0.01, 0.01, 0.002]))
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     # Define partition
     shell = torch.tensor([
-        [-4., -4., -1.],
-        [10., 10., 10.]
+        [-3., -4., -1.],
+        [10., 8., 8.]
     ])
     loc_shell = get_shell_loc(shell)
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([3.0, 1.0, -torch.inf]).unsqueeze(0), torch.tensor([5.0, 4.0, torch.inf]).unsqueeze(0))
+    unsafe_set = HyperRectangle(torch.tensor([5.0, 2.0, -torch.inf]).unsqueeze(0), torch.tensor([7.5, 4.0, torch.inf]).unsqueeze(0))
 
     # Define initial partition
-    inner_locs = uniform_grid(shell[0], shell[1], 3)
+    inner_locs = uniform_grid(shell[0], shell[1], 4)
     partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
 
     # Compute initial distribution
@@ -66,13 +66,13 @@ if __name__ == '__main__':
         beta_unsafe_set = torch.clamp(beta_unsafe_set, - approx_unsafe, 1 - approx_unsafe)
 
         # Define new partition
-        new_inner_locs = uniform_grid(shell[0], shell[1], 3)
+        new_inner_locs = uniform_grid(shell[0], shell[1], 4)
         new_partition = HyperRectangularPartition(new_inner_locs, loc_shell, shell)
         refined_partition = deepcopy(new_partition)
 
         # print(f'Locs before refinement for t={t}: {new_partition.locs}')
 
-        for refinement in range(3):
+        for refinement in range(2):
             new_partition = refined_partition
             new_approx_probs = approx_distribution.compute_probabilities(new_partition)
 
