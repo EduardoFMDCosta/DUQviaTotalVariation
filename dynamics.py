@@ -64,7 +64,7 @@ class SinusoidalDynamics(Dynamics):
         return 1.0
 
 class DubinsDynamics(Dynamics):
-    def __init__(self, velocity: float = 5.0, u: float = 2.0, h: float = 0.3, **kwargs):
+    def __init__(self, velocity: float = 5.0, u: float = 2.0, h: float = 0.15, **kwargs):
         self.num_dims = 3
         self.velocity = velocity
         self.u = u
