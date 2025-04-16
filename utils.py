@@ -104,9 +104,9 @@ def bound_transition_kernel(f: Dynamics,
 
 
 def transition_kernel(f: Dynamics,
-                            locs: torch.tensor,
-                            target: Union[HyperRectangularPartition, HyperRectangle],
-                            covariance: torch.Tensor):
+                      locs: torch.tensor,
+                      target: Union[HyperRectangularPartition, HyperRectangle],
+                      covariance: torch.Tensor):
     kernel_means = f(locs)
     probs = gaussian_probabilities(kernel_means, covariance, target)
     probs[-1, :] = 0.0 # R_unbounded as absorbing state
