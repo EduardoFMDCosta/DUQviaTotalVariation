@@ -44,12 +44,13 @@ def kernel_probs_given_optimal_means(means_for_target: torch.Tensor,
     lower_std = (target_lower - means_for_target) / std_devs
     upper_std = (target_upper - means_for_target) / std_devs
 
-    lower_std[lower_std.isnan()] = float('inf')
+    lower_std[lower_std.isnan()] = - float('inf') # Q? Should always be negative?
     upper_std[upper_std.isnan()] = float('inf')
 
     # Compute Gaussian probs for each pair (\barR_from, R_target)
     lower_cdf = normal.cdf(lower_std)
     upper_cdf = normal.cdf(upper_std)
+
     probs_per_dimension = upper_cdf - lower_cdf
     probs = probs_per_dimension.prod(dim=-1)
 
