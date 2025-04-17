@@ -9,10 +9,13 @@ from probabilities import kernel_probs_given_optimal_means, gaussian_probabiliti
 from regions import HyperRectangle, Polytope, HyperRectangularPartition
 import bound_propagation as bp
 
-def get_shell(samples: torch.Tensor):
+def get_shell(samples: torch.Tensor, eps:float | None = None):
 
-    min_point = torch.min(samples, dim=0).values
-    max_point = torch.max(samples, dim=0).values
+    if eps is None: 
+        eps = 3 * torch.std(samples, dim = 0)
+
+    min_point = torch.min(samples, dim=0).values - eps
+    max_point = torch.max(samples, dim=0).values + eps
 
     return torch.stack((min_point, max_point), dim=0)
 

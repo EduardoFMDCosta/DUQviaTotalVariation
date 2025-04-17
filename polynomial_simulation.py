@@ -4,7 +4,7 @@ from dynamics import PolynomialDynamics
 from distributions import Gaussian, GaussianMixture
 from plotting import plot_interval
 from regions import HyperRectangle, HyperRectangularPartition
-from utils import get_shell_loc, uniform_grid, o_maximization, bound_transition_kernel, transition_kernel
+from utils import get_shell, get_shell_loc, uniform_grid, o_maximization, bound_transition_kernel, transition_kernel
 
 if __name__ == '__main__':
     torch.manual_seed(0)
@@ -18,14 +18,15 @@ if __name__ == '__main__':
 
     # Noise distribution
     mean_noise = torch.Tensor([0., 0.])
-    cov_noise = torch.diag(torch.Tensor([0.1, 0.1]))
+    cov_noise = torch.diag(torch.Tensor([1.0, 1.0]))
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
+    # Define sampling parameters for shell
+    n_samples = 1000
+
     # Define partition
-    shell = torch.tensor([
-        [-10., -10.],
-        [10., 10.]
-    ])
+    samples = initial_distribution(n_samples)
+    shell = get_shell(samples)
     loc_shell = get_shell_loc(shell)
 
     # Define unsafe set
@@ -66,13 +67,16 @@ if __name__ == '__main__':
         beta_unsafe_set = torch.clamp(beta_unsafe_set, - approx_unsafe, 1 - approx_unsafe)
 
         # Define new partition
-        new_inner_locs = uniform_grid(shell[0], shell[1], 10)
+        samples = approx_distribution(n_samples)
+        shell = get_shell(samples)
+
+        new_inner_locs = uniform_grid(shell[0], shell[1], 20)
         new_partition = HyperRectangularPartition(new_inner_locs, loc_shell, shell)
         refined_partition = deepcopy(new_partition)
 
         # print(f'Locs before refinement for t={t}: {new_partition.locs}')
 
-        for refinement in range(2):
+        for refinement in range(1):
             new_partition = refined_partition
             new_approx_probs = approx_distribution.compute_probabilities(new_partition)
 
