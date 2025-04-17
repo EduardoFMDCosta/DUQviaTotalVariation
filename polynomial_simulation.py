@@ -4,7 +4,11 @@ from dynamics import PolynomialDynamics
 from distributions import Gaussian, GaussianMixture
 from plotting import plot_interval
 from regions import HyperRectangle, HyperRectangularPartition
-from utils import get_shell, get_shell_loc, uniform_grid, o_maximization, bound_transition_kernel, transition_kernel
+from utils import get_shell_loc, uniform_grid, o_maximization, bound_transition_kernel, transition_kernel, get_shell
+
+SCATTER = True
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 
 if __name__ == '__main__':
     torch.manual_seed(0)
@@ -17,28 +21,40 @@ if __name__ == '__main__':
     initial_distribution = Gaussian(mean_initial, cov_initial)
 
     # Noise distribution
-    mean_noise = torch.Tensor([0., 0.])
+    mean_noise = torch.Tensor([0, 0])
     cov_noise = torch.diag(torch.Tensor([1.0, 1.0]))
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
-    # Define sampling parameters for shell
-    n_samples = 1000
+    n_samples = 5000
 
     # Define partition
     samples = initial_distribution(n_samples)
     shell = get_shell(samples)
     loc_shell = get_shell_loc(shell)
 
+    if SCATTER:
+        fig, ax = plt.subplots()
+        rect = Rectangle(
+            (shell[0, 0], shell[0, 1]), 
+            shell[1, 0] - shell[0, 0], 
+            shell[1, 1] - shell[0, 1], 
+            fill = False
+        )
+        ax.add_patch(rect)
+        samples_cp = samples
+        ax.scatter(samples_cp[:, 0], samples_cp[:, 1])
+
     # Define unsafe set
     unsafe_set = HyperRectangle(torch.tensor([2.0, 2.0]).unsqueeze(0), torch.tensor([2.5, 2.5]).unsqueeze(0))
 
     # Define initial partition
-    inner_locs = uniform_grid(shell[0], shell[1], 20)
+    inner_locs = uniform_grid(shell[0], shell[1], 10)
     partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
 
     # Compute initial distribution
     approx_distribution = deepcopy(initial_distribution)
     approx_probs = approx_distribution.compute_probabilities(partition)
+    approx_unsafe = approx_distribution.compute_probabilities(unsafe_set)
 
     # Set initial alphas and betas to zero
     alphas_regions, betas_regions = torch.zeros(len(partition.locs)), torch.zeros(len(partition.locs))
@@ -46,33 +62,41 @@ if __name__ == '__main__':
 
     # For plotting
     lbs, ts, aps, ubs = [], [], [], []
+    lbs.append(alpha_unsafe_set)
+    aps.append(approx_unsafe)
+    ubs.append(beta_unsafe_set)
 
-    for t in range(10):
-
+    for t in range(5):
         # Compute alpha and beta for unsafe set
         inf_kernel_unsafe_set = bound_transition_kernel(f, partition, unsafe_set, cov_noise, supremum=False).squeeze()
         sup_kernel_unsafe_set = bound_transition_kernel(f, partition, unsafe_set, cov_noise, supremum=True).squeeze()
         kernel_at_locs_unsafe_set = transition_kernel(f, partition.locs, unsafe_set, cov_noise).squeeze()
 
-        # Compute approx unsafe
-        approx_unsafe = approx_distribution.compute_probabilities(unsafe_set).squeeze()
-
         # Compute bounds for unsafe set
         p_min = o_maximization(- inf_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)
-        p_max = o_maximization(sup_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)       
+        p_max = o_maximization(sup_kernel_unsafe_set, approx_probs + alphas_regions, approx_probs + betas_regions)      
 
         alpha_unsafe_set = torch.dot(inf_kernel_unsafe_set, p_min) - torch.dot(kernel_at_locs_unsafe_set, approx_probs)
-        alpha_unsafe_set = torch.clamp(alpha_unsafe_set, - approx_unsafe, 1 - approx_unsafe)
         beta_unsafe_set = torch.dot(sup_kernel_unsafe_set, p_max) - torch.dot(kernel_at_locs_unsafe_set, approx_probs)
-        beta_unsafe_set = torch.clamp(beta_unsafe_set, - approx_unsafe, 1 - approx_unsafe)
 
         # Define new partition
         samples = approx_distribution(n_samples)
         shell = get_shell(samples)
-
-        new_inner_locs = uniform_grid(shell[0], shell[1], 20)
+        new_inner_locs = uniform_grid(shell[0], shell[1], 10)
         new_partition = HyperRectangularPartition(new_inner_locs, loc_shell, shell)
         refined_partition = deepcopy(new_partition)
+
+        if SCATTER:
+            rect = Rectangle(
+                (shell[0, 0], shell[0, 1]), 
+                shell[1, 0] - shell[0, 0], 
+                shell[1, 1] - shell[0, 1], 
+                fill = False
+            )
+            ax.add_patch(rect)
+            samples_cp = f(samples) + noise_distribution(n_samples)
+            ax.scatter(samples_cp[:, 0], samples_cp[:, 1])
+
 
         # print(f'Locs before refinement for t={t}: {new_partition.locs}')
 
@@ -106,15 +130,24 @@ if __name__ == '__main__':
         alphas_regions = next_alphas_regions
         betas_regions = next_betas_regions
 
-        lbs.append(alpha_unsafe_set)
-        aps.append(approx_unsafe)
-        ubs.append(beta_unsafe_set)
-
         # Update approximation
         partition = new_partition
         approx_probs = new_approx_probs
 
         approx_distribution = GaussianMixture(f(partition.locs), cov_noise, approx_probs)
+
+        # Compute approx unsafe and rectify alphas, betas
+        approx_unsafe = approx_distribution.compute_probabilities(unsafe_set).squeeze()
+        alpha_unsafe_set = torch.clamp(alpha_unsafe_set, - approx_unsafe, 1 - approx_unsafe)
+        beta_unsafe_set = torch.clamp(beta_unsafe_set, - approx_unsafe, 1 - approx_unsafe)
+
+        lbs.append(alpha_unsafe_set)
+        aps.append(approx_unsafe)
+        ubs.append(beta_unsafe_set)
+
+    if SCATTER:
+        ax.grid(True)
+        plt.show()
 
     lbs, aps, ubs = torch.tensor(lbs), torch.tensor(aps), torch.tensor(ubs)
     print(f'alphas for unsafe set: {lbs}')
