@@ -73,6 +73,8 @@ def bound_transition_kernel(f: Dynamics,
     from_lower = ibp.lower
     from_upper = ibp.upper
 
+    # TODO: handle the NaNs here
+
     # Project center (target_center) to cube (from_set)
     projection = torch.clamp(target_center.unsqueeze(0),
                             min=from_lower.unsqueeze(1),
