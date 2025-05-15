@@ -1,7 +1,7 @@
 import torch
 import bound_propagation as bp
 from typing import Union, Optional
-from regions import HyperRectangularPartition, HyperRectangle
+from grid.regions import HyperRectangularPartition, HyperRectangle
 
 factory = bp.BoundModelFactory()
 

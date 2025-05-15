@@ -1,5 +1,5 @@
 import torch
-from regions import HyperRectangularPartition, HyperRectangle
+from grid.regions import HyperRectangularPartition, HyperRectangle
 from typing import Union
 import torch.distributions as dist
 

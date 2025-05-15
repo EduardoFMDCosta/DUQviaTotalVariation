@@ -3,8 +3,8 @@ from typing import Union
 from itertools import accumulate
 from bounds import compute_bound_TV
 from distributions import Gaussian, GaussianMixture
-from dynamics import Dynamics
-from regions import HyperRectangularPartition
+from dynamics.dynamics import Dynamics
+from grid.regions import HyperRectangularPartition
 from utils import get_shell, get_shell_loc, uniform_grid
 
 
@@ -50,7 +50,7 @@ def approximation_scheme_tv(f: Dynamics,
             contributions, tv_bound = compute_bound_TV(f, probs, noise_distribution, partition)
 
             # Refinement
-            while len(partition.lower) < 5e3:
+            while len(partition.lower) < 100:
                 partition = partition.refine(contributions=contributions, threshold=1e-4, pareto=0.5)
                 probs = mixture_distribution.compute_probabilities(partition)
                 contributions, tv_bound = compute_bound_TV(f, probs, noise_distribution, partition)

@@ -2,7 +2,7 @@ import torch
 from torch.distributions import MultivariateNormal
 from abc import abstractmethod
 from probabilities import gaussian_probabilities
-from regions import HyperRectangularPartition, HyperRectangle
+from grid.regions import HyperRectangularPartition, HyperRectangle
 from typing import Union
 
 

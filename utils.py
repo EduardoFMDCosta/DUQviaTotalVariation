@@ -1,12 +1,11 @@
 from typing import Union
 import torch
-import itertools
 from copy import deepcopy
 from distributions import Gaussian
 from dynamics import Dynamics, factory
-from optimization import gradient_descent, project_to_closest_face
-from probabilities import kernel_probs_given_optimal_means, gaussian_probabilities
-from regions import HyperRectangle, Polytope, HyperRectangularPartition
+from optimization import gradient_descent
+from distributions.probabilities import kernel_probs_given_optimal_means, gaussian_probabilities
+from grid.regions import HyperRectangle, Polytope, HyperRectangularPartition
 import bound_propagation as bp
 
 def get_shell(samples: torch.Tensor, eps:float | None = None):

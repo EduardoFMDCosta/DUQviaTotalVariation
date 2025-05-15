@@ -1,8 +1,8 @@
 import torch
-from dynamics import LinearDynamics
+from dynamics.dynamics import LinearDynamics
 from distributions import Gaussian
 from experiments import approximation_scheme_tv
-from regions import HyperRectangle, HyperRectangularPartition
+from grid.regions import HyperRectangle, HyperRectangularPartition
 from utils import get_shell_loc, uniform_grid
 
 if __name__ == '__main__':
@@ -46,3 +46,6 @@ if __name__ == '__main__':
                                                   n_samples=1000)
 
     print(tv_bounds)
+
+    # mixtures_hitting_probs = monte_carlo.mixture_approximation_monte_carlo(mixtures, barrier, parameters.n_samples)
+    # print(f"Mixtures hitting probs: {mixtures_hitting_probs}")

@@ -1,10 +1,9 @@
 import torch
 from math import sqrt
-from typing import Union
 from torch.special import erf
 from distributions import Gaussian, GaussianMixture
 from dynamics import Dynamics
-from regions import HyperRectangularPartition
+from grid.regions import HyperRectangularPartition
 
 
 # ----------------------------------------------------------------------------------------- #

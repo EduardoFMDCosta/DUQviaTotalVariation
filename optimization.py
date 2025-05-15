@@ -1,10 +1,8 @@
-from typing import Union
 import torch
-from mpmath import isinf
 
 from distributions import Gaussian
 from dynamics import Dynamics
-from regions import HyperRectangularPartition, HyperRectangle
+from grid.regions import HyperRectangle
 
 
 def objective(z, f, covariance, to_set):
