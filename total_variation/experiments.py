@@ -1,7 +1,7 @@
 import torch
 from typing import Union
 from itertools import accumulate
-from bounds import compute_bound_TV
+from total_variation.bounds import compute_bound_TV
 from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangularPartition

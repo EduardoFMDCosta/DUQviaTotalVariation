@@ -1,7 +1,7 @@
 import torch
 from dynamics.dynamics import LinearDynamics
 from distributions.distributions import Gaussian
-from experiments import approximation_scheme_tv
+from total_variation.experiments import approximation_scheme_tv
 from grid.regions import HyperRectangle, HyperRectangularPartition
 from grid.utils import get_shell_loc, uniform_grid
 
