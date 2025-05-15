@@ -49,42 +49,8 @@ class LinearDynamics(Dynamics):
             bias = torch.tensor(bias)
 
         self.num_dims = weight.size(-1)
-        self._global_lipschitz = torch.linalg.svd(weight).S[0]
 
         super(LinearDynamics, self).__init__(bp.FixedLinear(weight, bias))
-
-
-class SinusoidalDynamics(Dynamics):
-    def __init__(self, num_dims, **kwargs):
-        self.num_dims = num_dims
-        super(SinusoidalDynamics, self).__init__(bp.Sin())
-
-    @property
-    def global_lipschitz(self):
-        return 1.0
-    
-
-# TODO: For now just an example, maybe write it in a more 
-#       generic way afterward
-class PolynomialDynamics(Dynamics):
-    def __init__(self, h: float = 0.05, **kwargs):
-        self.num_dims = 2
-        monomials = [
-            [(0, 1)],           # x0 
-            [(1, 1)],           # x1 
-            [(0, 2)],           # x0^2
-            [(0, 1), (1, 1)],   # x0 * x1
-            [(1, 2)]            # x1^2
-        ]
-        super(PolynomialDynamics, self).__init__(
-            bp.MultivariateMonomial(monomials), 
-            bp.FixedLinear(
-                torch.tensor([
-                    [1., 1.25 * h, 0.,             0.,             0.            ], 
-                    [0., 1.4,      0.3 * h * 0.25, -0.3 * h * 0.4, 0.3 * h * 0.25]
-                ])
-            )
-        )
 
 class DubinsDynamics(Dynamics):
     def __init__(self, velocity: float = 5.0, u: float = 2.0, h: float = 0.3, **kwargs):
