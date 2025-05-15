@@ -1,9 +1,9 @@
 import torch
 from dynamics.dynamics import LinearDynamics
-from distributions import Gaussian
+from distributions.distributions import Gaussian
 from experiments import approximation_scheme_tv
 from grid.regions import HyperRectangle, HyperRectangularPartition
-from utils import get_shell_loc, uniform_grid
+from grid.utils import get_shell_loc, uniform_grid
 
 if __name__ == '__main__':
     torch.manual_seed(0)

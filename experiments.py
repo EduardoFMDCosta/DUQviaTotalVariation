@@ -2,10 +2,10 @@ import torch
 from typing import Union
 from itertools import accumulate
 from bounds import compute_bound_TV
-from distributions import Gaussian, GaussianMixture
+from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangularPartition
-from utils import get_shell, get_shell_loc, uniform_grid
+from grid.utils import get_shell, get_shell_loc, uniform_grid
 
 
 def propagate(f: Dynamics,

@@ -1,8 +1,8 @@
 import torch
 from math import sqrt
 from torch.special import erf
-from distributions import Gaussian, GaussianMixture
-from dynamics import Dynamics
+from distributions.distributions import Gaussian, GaussianMixture
+from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangularPartition
 
 
