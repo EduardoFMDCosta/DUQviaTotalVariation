@@ -1,7 +1,7 @@
 import torch
 from typing import Union
 from itertools import accumulate
-from total_variation.bounds import compute_bound_TV
+from total_variation.bounds import compute_bound_tv
 from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangularPartition
@@ -18,7 +18,7 @@ def propagate(f: Dynamics,
 
     return mixture_distribution
 
-def approximation_scheme_tv(f: Dynamics,
+def propagate_mixture_tv_bounds(f: Dynamics,
                             initial_distribution: Union[Gaussian, GaussianMixture],
                             noise_distribution: Gaussian,
                             initial_grid_size: int = 10,
@@ -27,6 +27,8 @@ def approximation_scheme_tv(f: Dynamics,
 
     tv_bounds = [0.0]
     mixtures = []
+    probs = None
+    partition = None
 
     for t in range(prediction_horizon + 1):
 
@@ -47,13 +49,13 @@ def approximation_scheme_tv(f: Dynamics,
             partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
             probs = mixture_distribution.compute_probabilities(partition)
 
-            contributions, tv_bound = compute_bound_TV(f, probs, noise_distribution, partition)
+            contributions, tv_bound = compute_bound_tv(f, probs, noise_distribution, partition)
 
             # Refinement
             while len(partition.lower) < 100:
                 partition = partition.refine(contributions=contributions, threshold=1e-4, pareto=0.5)
                 probs = mixture_distribution.compute_probabilities(partition)
-                contributions, tv_bound = compute_bound_TV(f, probs, noise_distribution, partition)
+                contributions, tv_bound = compute_bound_tv(f, probs, noise_distribution, partition)
 
             tv_bounds.append(tv_bound.item())
 

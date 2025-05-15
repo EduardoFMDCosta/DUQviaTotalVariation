@@ -20,7 +20,7 @@ def compute_h(f: Dynamics, noise_distribution: Gaussian, partition: HyperRectang
     return 1 / (2 * sqrt(2)) * spectral_norm_inverse_cov * max_norm_regions
 
 
-def compute_bound_TV(f: Dynamics, mixture_probs: torch.Tensor, noise_distribution: Gaussian, partition: HyperRectangularPartition):
+def compute_bound_tv(f: Dynamics, mixture_probs: torch.Tensor, noise_distribution: Gaussian, partition: HyperRectangularPartition):
 
     h = compute_h(f, noise_distribution, partition)
     erf_h = erf(h)
