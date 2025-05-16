@@ -39,7 +39,7 @@ if __name__ == '__main__':
                                                   noise_distribution=noise_distribution,
                                                   initial_grid_size=100,
                                                   prediction_horizon=horizon,
-                                                  n_samples=num_samples)
+                                                  num_samples=num_samples)
 
     print(tv_bounds)
 
@@ -47,9 +47,9 @@ if __name__ == '__main__':
                 initial_distribution=initial_distribution,
                 noise_distribution=noise_distribution,
                 prediction_horizon=horizon,
-                n_samples=num_samples)
+                num_samples=num_samples)
 
     gmm_samples = sample_from_gmm(mixtures=mixtures,
-                    n_samples=num_samples)
+                    num_samples=num_samples)
 
     plot_samples(monte_carlo_samples, gmm_samples)
