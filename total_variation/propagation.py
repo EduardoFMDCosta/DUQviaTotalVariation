@@ -1,7 +1,7 @@
 import torch
 from typing import Union
 from itertools import accumulate
-from total_variation.bounds import compute_bound_tv
+from total_variation.bounds import compute_bound_tv, get_objective_tv_bound
 from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangularPartition
@@ -47,17 +47,32 @@ def propagate_mixture_tv_bounds(f: Dynamics,
 
             inner_locs = uniform_grid(shell[0], shell[1], initial_grid_size)
             partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
-            probs = mixture_distribution.compute_probabilities(partition)
 
-            contributions, tv_bound = compute_bound_tv(f, probs, noise_distribution, partition)
+            contributions, tv_bound = compute_bound_tv(f=f,
+                                                       mixture=mixture_distribution,
+                                                       noise_distribution=noise_distribution,
+                                                       partition=partition)
 
             # Refinement
-            while len(partition.lower) < 100:
-                partition = partition.refine(contributions=contributions, threshold=1e-4, pareto=0.5)
-                probs = mixture_distribution.compute_probabilities(partition)
-                contributions, tv_bound = compute_bound_tv(f, probs, noise_distribution, partition)
+            objective = get_objective_tv_bound(f=f,
+                                               mixture=mixture_distribution,
+                                               noise_distribution=noise_distribution)
+
+            partition = partition.refine(objective=objective,
+                                         contributions=contributions,
+                                         target=0.05,
+                                         pareto=0.3,
+                                         max_regions=5000)
+
+            probs = mixture_distribution.compute_probabilities(partition)
+            contributions, tv_bound = compute_bound_tv(f=f,
+                                                       mixture=mixture_distribution,
+                                                       noise_distribution=noise_distribution,
+                                                       partition=partition)
 
             tv_bounds.append(tv_bound.item())
+
+        print(f'End of computing for t={t}')
 
     # TV_{t+1} = min(TV_t + bound, 1)
     tv_bounds = [min(1, tv) for tv in accumulate(tv_bounds)]

@@ -2,7 +2,7 @@ import torch
 from dynamics.dynamics import LinearDynamics
 from distributions.distributions import Gaussian
 from plotting.plotting import plot_samples
-from total_variation.experiments import monte_carlo, sample_from_gmm, propagate_mixture_tv_bounds
+from total_variation.propagation import monte_carlo, sample_from_gmm, propagate_mixture_tv_bounds
 from grid.regions import HyperRectangle, HyperRectangularPartition
 from grid.utils import get_shell_loc, uniform_grid
 
@@ -35,11 +35,11 @@ if __name__ == '__main__':
     num_samples = 1000
 
     mixtures, tv_bounds = propagate_mixture_tv_bounds(f=f,
-                                                  initial_distribution=initial_distribution,
-                                                  noise_distribution=noise_distribution,
-                                                  initial_grid_size=100,
-                                                  prediction_horizon=horizon,
-                                                  num_samples=num_samples)
+                                                      initial_distribution=initial_distribution,
+                                                      noise_distribution=noise_distribution,
+                                                      initial_grid_size=10,
+                                                      prediction_horizon=horizon,
+                                                      num_samples=num_samples)
 
     print(tv_bounds)
 
