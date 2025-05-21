@@ -1,6 +1,7 @@
 import torch
 import itertools
 from typing import Callable
+from itertools import product
 
 class HyperRectangle:
     def __init__(self, lower, upper):
@@ -33,13 +34,16 @@ class HyperRectangle:
 
 
 class HyperRectangularPartition:
-    def __init__(self, locs_inner: torch.Tensor, loc_shell: torch.Tensor, shell: torch.Tensor):
-        if not self._are_locs_in_grid(locs_inner):
-            raise ValueError("locs must be in a grid")
+    def __init__(self,
+                 inner_partition: HyperRectangle,
+                 loc_shell: torch.Tensor,
+                 shell: torch.Tensor):
+
         self._loc_shell = loc_shell
         self._shell = shell
-        self._locs_inner = locs_inner
-        self._num_dims = locs_inner.size(-1)
+        self._inner_partition = inner_partition
+        self._locs_inner = inner_partition.center
+        self._num_dims = loc_shell.size(-1)
         self._lower = self._get_lower()
         self._upper = self._get_upper()
 
@@ -69,29 +73,14 @@ class HyperRectangularPartition:
     def shell(self):
         return HyperRectangle(self._shell[0], self._shell[1])
 
-    @staticmethod
-    def _are_locs_in_grid(locs: torch.Tensor):
-        unique_elements_per_n = torch.tensor([torch.unique(locs[:, i]).numel() for i in range(locs.size(1))])
-        return unique_elements_per_n.prod() == torch.unique(locs,dim=0).size(0)
-
     def _get_upper(self):
-        pos_diff = (self._locs_inner.unsqueeze(-3) - self._locs_inner.unsqueeze(-2)).clip(0, torch.inf)
-        mask = pos_diff == 0.
-        pos_diff[mask] = torch.inf
-
-        upper_inner = self._locs_inner + 0.5 * pos_diff.min(dim=-2).values
-        upper_inner = upper_inner.clamp(min=self._shell[0], max=self._shell[1])
+        upper_inner = self._inner_partition.upper
         upper_shell = torch.zeros(self._num_dims).fill_(torch.inf)
 
         return torch.cat((upper_inner, upper_shell.unsqueeze(-2)), dim=-2)
 
     def _get_lower(self):
-        neg_diff = (self._locs_inner.unsqueeze(-3) - self._locs_inner.unsqueeze(-2)).clip(-torch.inf, 0)
-        mask = neg_diff == 0.
-        neg_diff[mask] = -torch.inf
-
-        lower_inner = self._locs_inner + 0.5 * neg_diff.max(dim=-2).values
-        lower_inner = lower_inner.clamp(min=self._shell[0], max=self._shell[1])
+        lower_inner = self._inner_partition.lower
         lower_shell = torch.zeros(self._num_dims).fill_(-torch.inf)
 
         return torch.cat((lower_inner, lower_shell.unsqueeze(-2)), dim=-2)
@@ -114,6 +103,42 @@ class HyperRectangularPartition:
 
         return grid
 
+    @staticmethod
+    def split(inner_partition: HyperRectangle,
+              condition_mask: torch.Tensor):
+
+        lower = inner_partition.lower
+        upper = inner_partition.upper
+        locs = inner_partition.center
+
+        d = lower.shape[-1]
+        combinations = torch.tensor(list(product([0, 1], repeat=d)), dtype=torch.bool)[None, :, :]  # (1, n_sub, d)
+
+        # Select rectangles to split (k, 1, d)
+        selected_lower = lower[condition_mask][:, None, :]
+        selected_upper = upper[condition_mask][:, None, :]
+        selected_locs = locs[condition_mask][:, None, :]
+
+        low_mask = ~combinations
+        high_mask = combinations
+
+        sub_lowers = torch.where(low_mask, selected_lower, selected_locs).reshape(-1, d)
+        sub_uppers = torch.where(high_mask, selected_upper, selected_locs).reshape(-1, d)
+
+        # Keep the rectangles not being split
+        keep_mask = ~condition_mask
+        kept_lower = lower[keep_mask]
+        kept_upper = upper[keep_mask]
+
+        # Concatenate
+        refined_lower = torch.cat([kept_lower, sub_lowers], dim=0)
+        refined_upper = torch.cat([kept_upper, sub_uppers], dim=0)
+
+        # Get partition
+        refined_inner_grid = HyperRectangle(lower=refined_lower, upper=refined_upper)
+
+        return refined_inner_grid
+
     def refine(self,
                objective: Callable,
                contributions: torch.Tensor,
@@ -121,11 +146,7 @@ class HyperRectangularPartition:
                pareto: float = 0.2,
                max_regions: int = 1000):
 
-        locs_inner = self._locs_inner
-        lower_inner = self.lower[:-1]
-        upper_inner = self.upper[:-1]
-
-        refined_grid = HyperRectangularPartition(locs_inner, self._loc_shell, self._shell)
+        refined_grid = HyperRectangularPartition(self._inner_partition, self._loc_shell, self._shell)
 
         while contributions.sum() > target and contributions.size(0) < max_regions:
             # Compute the threshold for the top pareto%
@@ -134,20 +155,10 @@ class HyperRectangularPartition:
 
             mask = contributions[:-1] > pareto_threshold
 
-            # Add mid-points in diagonal if contribution condition is met
-            mid_low = (locs_inner[mask] + lower_inner[mask]) / 2
-            mid_high = (locs_inner[mask] + upper_inner[mask]) / 2
-            locs_expanded = torch.cat((locs_inner, mid_low, mid_high), dim=0)
-
-            # Generate grid
-            grid = self.generate_grid(locs_expanded)
-            refined_grid = HyperRectangularPartition(grid, self._loc_shell, self._shell)
+            refined_inner = self.split(refined_grid._inner_partition, mask)
+            refined_grid = HyperRectangularPartition(refined_inner, self._loc_shell, self._shell)
 
             contributions, _ = objective(refined_grid)
-
-            locs_inner = refined_grid._locs_inner
-            lower_inner = refined_grid.lower[:-1]
-            upper_inner = refined_grid.upper[:-1]
 
         return refined_grid
 
