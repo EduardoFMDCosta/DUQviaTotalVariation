@@ -1,9 +1,13 @@
 import torch
+import itertools
+
+from grid.regions import HyperRectangle
+
 
 def get_shell(samples: torch.Tensor, eps:float | None = None):
 
     if eps is None: 
-        eps = 3 * torch.std(samples, dim = 0)
+        eps = 3 * torch.std(samples, dim=0)
 
     min_point = torch.min(samples, dim=0).values - eps
     max_point = torch.max(samples, dim=0).values + eps
@@ -27,8 +31,24 @@ def uniform_grid(lower: torch.Tensor,
                  n: int):
 
     d = lower.shape[0]
-    equidistant_spaces = [torch.linspace(lower[i], upper[i], steps=n) for i in range(d)]
-    mesh = torch.meshgrid(*equidistant_spaces, indexing="ij")
-    grid = torch.stack(mesh, dim=-1).reshape(-1, d)
+    k = int(round(n ** (1 / d)))
+    assert k ** d == n, "n must be a perfect power of the number of dimensions"
+
+    # Generate grid split points per dimension
+    grids = [torch.linspace(lower[i], upper[i], steps=k + 1) for i in range(d)]
+
+    # Get all combinations of lower corner indices
+    corner_indices = list(itertools.product(*(range(k) for _ in range(d))))
+
+    # Generate lower and upper bounds
+    lowers = []
+    uppers = []
+    for idx in corner_indices:
+        sub_lower = torch.tensor([grids[i][idx[i]] for i in range(d)])
+        sub_upper = torch.tensor([grids[i][idx[i] + 1] for i in range(d)])
+        lowers.append(sub_lower)
+        uppers.append(sub_upper)
+
+    grid = HyperRectangle(torch.stack(lowers), torch.stack(uppers))
 
     return grid

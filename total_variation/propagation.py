@@ -19,11 +19,11 @@ def propagate(f: Dynamics,
     return mixture_distribution
 
 def propagate_mixture_tv_bounds(f: Dynamics,
-                            initial_distribution: Union[Gaussian, GaussianMixture],
-                            noise_distribution: Gaussian,
-                            initial_grid_size: int = 10,
-                            prediction_horizon: int = 2,
-                            num_samples: int = 1000):
+                                initial_distribution: Union[Gaussian, GaussianMixture],
+                                noise_distribution: Gaussian,
+                                initial_grid_size: int = 10,
+                                prediction_horizon: int = 2,
+                                num_samples: int = 1000):
 
     tv_bounds = [0.0]
     mixtures = []
@@ -37,7 +37,6 @@ def propagate_mixture_tv_bounds(f: Dynamics,
         else:
             mixture_distribution = propagate(f, probs, partition.locs, noise_distribution)
 
-
         mixtures.append(mixture_distribution)
         samples = mixture_distribution(num_samples)
 
@@ -45,8 +44,8 @@ def propagate_mixture_tv_bounds(f: Dynamics,
             shell = get_shell(samples)
             loc_shell = get_shell_loc(shell)
 
-            inner_locs = uniform_grid(shell[0], shell[1], initial_grid_size)
-            partition = HyperRectangularPartition(inner_locs, loc_shell, shell)
+            inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
+            partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
 
             contributions, tv_bound = compute_bound_tv(f=f,
                                                        mixture=mixture_distribution,
