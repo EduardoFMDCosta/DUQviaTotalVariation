@@ -70,6 +70,10 @@ class HyperRectangularPartition:
         return self._upper
 
     @property
+    def inner_partition(self):
+        return self._inner_partition
+
+    @property
     def shell(self):
         return HyperRectangle(self._shell[0], self._shell[1])
 

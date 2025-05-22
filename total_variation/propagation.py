@@ -6,6 +6,7 @@ from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangularPartition
 from grid.utils import get_shell, get_shell_loc, uniform_grid
+from plotting.plotting import plot_partition
 
 
 def propagate(f: Dynamics,
@@ -23,7 +24,8 @@ def propagate_mixture_tv_bounds(f: Dynamics,
                                 noise_distribution: Gaussian,
                                 initial_grid_size: int = 10,
                                 prediction_horizon: int = 2,
-                                num_samples: int = 1000):
+                                num_samples: int = 1000,
+                                plot_grid: bool = True):
 
     tv_bounds = [0.0]
     mixtures = []
@@ -46,6 +48,8 @@ def propagate_mixture_tv_bounds(f: Dynamics,
 
             inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
             partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
+            if plot_grid:
+                plot_partition(partition)
 
             contributions, tv_bound = compute_bound_tv(f=f,
                                                        mixture=mixture_distribution,
@@ -59,9 +63,11 @@ def propagate_mixture_tv_bounds(f: Dynamics,
 
             partition = partition.refine(objective=objective,
                                          contributions=contributions,
-                                         target=0.05,
+                                         target=0.02,
                                          pareto=0.3,
                                          max_regions=5000)
+            if plot_grid:
+                plot_partition(partition)
 
             probs = mixture_distribution.compute_probabilities(partition)
             contributions, tv_bound = compute_bound_tv(f=f,
