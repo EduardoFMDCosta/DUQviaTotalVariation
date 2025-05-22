@@ -52,8 +52,8 @@ class LinearDynamics(Dynamics):
 
         super(LinearDynamics, self).__init__(bp.FixedLinear(weight, bias))
 
-class DubinsDynamics(Dynamics):
-    def __init__(self, velocity: float = 5.0, u: float = 2.0, h: float = 0.3, **kwargs):
+class DubinsCarDynamics(Dynamics):
+    def __init__(self, velocity: float = 1.5, u: float = 1.0, h: float = 0.3, **kwargs):
         self.num_dims = 3
         self.velocity = velocity
         self.u = u
@@ -88,7 +88,15 @@ class DubinsDynamics(Dynamics):
             ),
         )
  
-        super(DubinsDynamics, self).__init__(
+        super(DubinsCarDynamics, self).__init__(
             bp.Parallel(linear_part, trig_part),
             bp.VectorAdd(),
         )
+
+def get_dynamics(dynamics_type: str, **kwargs):
+    if dynamics_type == 'LinearDynamics':
+        return LinearDynamics(**kwargs)
+    elif dynamics_type == 'DubinsCarDynamics':
+        return DubinsCarDynamics(**kwargs)
+    else:
+        raise ValueError(f"Unknown dynamics: {dynamics_type}")
