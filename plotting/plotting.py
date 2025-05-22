@@ -1,7 +1,10 @@
 import torch
+import numpy as np
 import matplotlib.pyplot as plt
 from grid.regions import HyperRectangularPartition, HyperRectangle
 import matplotlib.patches as patches
+import matplotlib.cm as cm
+import numpy.ma as ma
 
 plt.style.use('seaborn-v0_8-bright')
 
@@ -16,16 +19,48 @@ def plot_samples(monte_carlo_samples: list,
 
     assert len(monte_carlo_samples) == len(gmm_samples)
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    T = len(monte_carlo_samples)
+    colors = cm.viridis(np.linspace(0, 1, T))  # color for each timestep
 
-    for t in range(len(monte_carlo_samples)):
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+    titles = ['Monte Carlo', 'GMM']
+    samples_list = [monte_carlo_samples, gmm_samples]
 
-        mc = monte_carlo_samples[t]
-        gmm = gmm_samples[t]
+    # Compute global bounds for consistent axis limits and binning
+    all_samples = torch.cat(monte_carlo_samples + gmm_samples, dim=0).cpu().numpy()
+    xmin, xmax = all_samples[:, 0].min(), all_samples[:, 0].max()
+    ymin, ymax = all_samples[:, 1].min(), all_samples[:, 1].max()
 
-        axes[0].scatter(mc[:, 0], mc[:, 1], color='blue', alpha=0.5)
-        axes[1].scatter(gmm[:, 0], gmm[:, 1], color='red', alpha=0.5)
+    # Define bin edges (you can customize bin count)
+    bins = 100
+    x_edges = np.linspace(xmin, xmax, bins + 1)
+    y_edges = np.linspace(ymin, ymax, bins + 1)
 
+    for ax, samples, title in zip(axes, samples_list, titles):
+        for t in range(T):
+            data = samples[t].cpu().numpy()
+            H, xedges, yedges = np.histogram2d(data[:, 0], data[:, 1], bins=[x_edges, y_edges])
+
+            # Normalize for consistent transparency
+            H = H.T  # transpose to match image orientation
+
+            H_masked = ma.masked_where(H == 0, H)  # mask zero entries
+
+            # Use imshow with alpha blending
+            ax.imshow(
+                H_masked,
+                extent=[xmin, xmax, ymin, ymax],
+                origin='lower',
+                cmap=cm.viridis,
+                alpha=0.7,  # transparency per time step
+            )
+
+        ax.set_title(title)
+        ax.set_xlim(xmin, xmax)
+        ax.set_ylim(ymin, ymax)
+        ax.set_xlabel(r'$x_1$')
+        ax.set_ylabel(r'$x_2$')
+        ax.set_aspect('equal')
 
     plt.tight_layout()
     plt.show()
