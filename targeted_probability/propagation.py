@@ -26,7 +26,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                       initial_grid_size: int = 10,
                                       prediction_horizon: int = 2,
                                       num_samples: int = 1000,
-                                      plot: bool = True):
+                                      plot: bool = False):
 
     # Parameters
     num_unsafe_sets = unsafe_sets.lower.shape[0]
@@ -105,7 +105,7 @@ if __name__ == '__main__':
     n_samples = 5000
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([1.0, 1.0]).unsqueeze(0), torch.tensor([2.5, 2.5]).unsqueeze(0))
+    unsafe_set = HyperRectangle(torch.tensor([1.0, 1.0]).unsqueeze(0), torch.tensor([3.0, 3.0]).unsqueeze(0))
 
     mixtures, aps, lbs, ubs = propagate_mixture_targeted_bounds(f,
                                       initial_distribution,
@@ -114,7 +114,7 @@ if __name__ == '__main__':
                                       initial_grid_size= 25,
                                       prediction_horizon= 10,
                                       num_samples= 1000,
-                                      plot= True)
+                                      plot= False)
 
     monte_carlo_samples = monte_carlo(f=f,
                                       initial_distribution=initial_distribution,
@@ -129,5 +129,7 @@ if __name__ == '__main__':
     gmm_samples = sample_from_gmms(mixtures=mixtures,
                                   num_samples=1000)
 
-    plot_samples(monte_carlo_samples, gmm_samples)
+    plot_samples(monte_carlo_samples=monte_carlo_samples,
+                 gmm_samples=gmm_samples,
+                 unsafe_sets=unsafe_set)
 
