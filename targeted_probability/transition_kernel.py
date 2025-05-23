@@ -8,15 +8,15 @@ import bound_propagation as bp
 
 def transition_kernel(f: Dynamics,
                       locs: torch.tensor,
-                      target: Union[HyperRectangularPartition, HyperRectangle],
-                      covariance: torch.Tensor):
+                      covariance: torch.Tensor,
+                      target: Union[HyperRectangularPartition, HyperRectangle]):
 
     kernel_means = f(locs)
     probs = gaussian_probabilities(kernel_means, covariance, target)
     probs[-1, :] = 0.0 # R_unbounded as absorbing state
 
     if isinstance(target, HyperRectangularPartition):
-        probs[-1, -1] = 1.0
+        probs[-1, -1] = 1.0 # R_unbounded as absorbing state
 
     return probs
 
