@@ -135,7 +135,7 @@ def plot_confidence_interval(gmm_prob_set: torch.Tensor,
 
     plt.xlabel("Time step")
     plt.ylabel("Probability")
-    plt.legend(loc="upper right")
+    plt.legend(loc="upper left")
     plt.grid(True)
 
     plt.show()

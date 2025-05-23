@@ -68,7 +68,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                                      bounds_partition=bounds_partition,
                                                      target=unsafe_sets)
 
-
+            # Update weights
             probs = mixture_distribution.compute_probabilities(partition)
 
             lbs.append(bounds_unsafe_sets.lb_delta)
@@ -78,7 +78,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
         print(f'End of computing for t={t}')
 
     lbs, aps, ubs = torch.tensor(lbs), torch.tensor(aps), torch.tensor(ubs)
-    return mixtures, lbs, aps, ubs
+    return mixtures, aps, lbs, ubs
 
 
 if __name__ == '__main__':
