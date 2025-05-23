@@ -18,7 +18,7 @@ def plot_samples(monte_carlo_samples: torch.Tensor,
                  gmm_samples: torch.Tensor,
                  unsafe_sets: HyperRectangle = None):
 
-    if monte_carlo_samples.shape[-1] == 2:
+    if monte_carlo_samples.shape[-1] >= 2:
         assert monte_carlo_samples.shape[0] == gmm_samples.shape[0]
 
         T = monte_carlo_samples.shape[0]
