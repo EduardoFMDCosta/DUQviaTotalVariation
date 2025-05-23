@@ -40,7 +40,8 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
     partition = None
 
     # Bound trajectories
-    lbs, aps, ubs = [bounds_unsafe_sets.lb_delta], [initial_distribution.compute_probabilities(unsafe_sets)], [bounds_unsafe_sets.ub_delta]
+    aps = []
+    lbs, ubs = [bounds_unsafe_sets.lb_delta], [bounds_unsafe_sets.ub_delta]
 
     for t in range(prediction_horizon + 1):
 
@@ -51,6 +52,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
 
         mixtures.append(mixture_distribution)
         samples = mixture_distribution(num_samples)
+        aps.append(mixture_distribution.compute_probabilities(unsafe_sets))
 
         if t < prediction_horizon:
             shell = get_shell(samples)
@@ -72,7 +74,6 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
             probs = mixture_distribution.compute_probabilities(partition)
 
             lbs.append(bounds_unsafe_sets.lb_delta)
-            aps.append(mixture_distribution.compute_probabilities(unsafe_sets))
             ubs.append(bounds_unsafe_sets.ub_delta)
 
         print(f'End of computing for t={t}')
@@ -111,7 +112,7 @@ if __name__ == '__main__':
                                       initial_distribution,
                                       noise_distribution,
                                       unsafe_set,
-                                      initial_grid_size= 25,
+                                      initial_grid_size= 100,
                                       prediction_horizon= 10,
                                       num_samples= 1000,
                                       plot= False)
