@@ -157,7 +157,7 @@ class HyperRectangularPartition:
             top_k = max(1, int(pareto * contributions.numel()))
             pareto_threshold = torch.topk(contributions, top_k).values.min()
 
-            mask = contributions[:-1] > pareto_threshold
+            mask = contributions[:-1] >= pareto_threshold
 
             refined_inner = self.split(refined_grid._inner_partition, mask)
             refined_grid = HyperRectangularPartition(refined_inner, self._loc_shell, self._shell)
