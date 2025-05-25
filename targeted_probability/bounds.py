@@ -1,13 +1,10 @@
-from typing import Union
-
 import torch
-
+from typing import Union
 from distributions.distributions import GaussianMixture, Gaussian
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangle, HyperRectangularPartition
 from targeted_probability.transition_kernel import bound_transition_kernel, transition_kernel
 from targeted_probability.utils import o_maximization
-
 
 class TargetedBounds:
     def __init__(self,
@@ -16,7 +13,6 @@ class TargetedBounds:
 
         self.lb_delta = lb_delta
         self.ub_delta = ub_delta
-
 
 def compute_targeted_bound(f: Dynamics,
                            mixture: Union[Gaussian, GaussianMixture],
