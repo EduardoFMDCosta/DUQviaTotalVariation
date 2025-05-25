@@ -40,3 +40,10 @@ def compute_targeted_bound(f: Dynamics,
 
     return bounds
 
+def get_objective_targeted(f: Dynamics,
+                           noise_distribution: Gaussian,
+                           target: HyperRectangle):
+    def objective_targeted_bound(partition: HyperRectangularPartition):
+        return bound_transition_kernel(f, partition, target, noise_distribution.covariance, supremum=True).squeeze(), 0.0
+    return objective_targeted_bound
+

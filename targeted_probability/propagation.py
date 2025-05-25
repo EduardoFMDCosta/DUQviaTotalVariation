@@ -1,12 +1,13 @@
 import torch
 from typing import Union
 from distributions.distributions import Gaussian, GaussianMixture
-from dynamics.dynamics import LinearDynamics, factory, Dynamics
+from dynamics.dynamics import LinearDynamics, factory, Dynamics, DubinsCarDynamics
 from grid.regions import HyperRectangle, HyperRectangularPartition
 from grid.utils import get_shell, get_shell_loc, uniform_grid
 from plotting.plotting import plot_confidence_interval, plot_partition, plot_samples
 from sampling.monte_carlo import hitting_prob, monte_carlo, sample_from_gmms
-from targeted_probability.bounds import compute_targeted_bound, TargetedBounds
+from targeted_probability.bounds import compute_targeted_bound, TargetedBounds, get_objective_targeted
+from targeted_probability.transition_kernel import bound_transition_kernel
 
 
 def propagate(f: Dynamics,
@@ -70,6 +71,17 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                                      bounds_partition=bounds_partition,
                                                      target=unsafe_sets)
 
+            # Refinement
+            objective = get_objective_targeted(f=f,
+                                               noise_distribution=noise_distribution,
+                                               target=unsafe_sets)
+            contributions = bound_transition_kernel(f, partition, unsafe_sets, cov_noise, supremum=True).squeeze()
+            partition = partition.refine(objective=objective,
+                                         contributions=contributions,
+                                         target=1.02,
+                                         pareto=0.3,
+                                         max_regions=3000)
+
             # Update weights
             probs = mixture_distribution.compute_probabilities(partition)
 
@@ -91,36 +103,37 @@ if __name__ == '__main__':
             [0.74, 0.10],
             [0.05, 0.82]
         ])
-    f = LinearDynamics(A)
+    f = DubinsCarDynamics()
 
     # Initial distribution
-    mean_initial = torch.Tensor([10., 9.])
-    cov_initial = torch.diag(torch.Tensor([0.002, 0.002]))
+    mean_initial = torch.Tensor([5., 5., 0.1])
+    cov_initial = torch.diag(torch.Tensor([0.002, 0.002, 0.0001]))
     initial_distribution = Gaussian(mean_initial, cov_initial)
 
     # Noise distribution
-    mean_noise = torch.Tensor([0, 0])
-    cov_noise = torch.diag(torch.Tensor([0.1, 0.1]))
+    mean_noise = torch.Tensor([0, 0, 0])
+    cov_noise = torch.diag(torch.Tensor([0.001, 0.001, 0.0001]))
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     n_samples = 5000
+    horizon = 30
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([1.0, 1.0]).unsqueeze(0), torch.tensor([3.0, 3.0]).unsqueeze(0))
+    unsafe_set = HyperRectangle(torch.tensor([5, 5, -3000]).unsqueeze(0), torch.tensor([6, 6, 3000]).unsqueeze(0))
 
     mixtures, aps, lbs, ubs = propagate_mixture_targeted_bounds(f,
                                       initial_distribution,
                                       noise_distribution,
                                       unsafe_set,
-                                      initial_grid_size= 100,
-                                      prediction_horizon= 10,
+                                      initial_grid_size= 64,
+                                      prediction_horizon= horizon,
                                       num_samples= 1000,
                                       plot= False)
 
     monte_carlo_samples = monte_carlo(f=f,
                                       initial_distribution=initial_distribution,
                                       noise_distribution=noise_distribution,
-                                      prediction_horizon=10,
+                                      prediction_horizon=horizon,
                                       num_samples=1000)
 
     hitting_probs_mc = hitting_prob(monte_carlo_samples, unsafe_set)
