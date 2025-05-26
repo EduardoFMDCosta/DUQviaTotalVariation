@@ -4,7 +4,8 @@ import bound_propagation as bp
 from typing import Union, Optional
 from grid.regions import HyperRectangularPartition, HyperRectangle
 
-factory = bp.BoundModelFactory()
+import interval_bp
+from interval_bp import factory
 
 class Dynamics(torch.nn.Sequential):
     num_dims = None
@@ -99,7 +100,7 @@ class PiecewiseAffineBlock(Dynamics):
         min = torch.as_tensor(min) if not torch.is_tensor(min) else min
         max = torch.as_tensor(max) if not torch.is_tensor(max) else max
         super().__init__(
-            lbp.BoxedIdentity(min=min, max=max),
+            interval_bp.BoxedIdentity(min=min, max=max),
             dynamics
         )
 
@@ -183,5 +184,9 @@ def get_dynamics(dynamics_type: str, **kwargs):
         return LinearDynamics(**kwargs)
     elif dynamics_type == 'DubinsCarDynamics':
         return DubinsCarDynamics(**kwargs)
+    elif dynamics_type == 'DoubleSpiral2dDynamics':
+        return DoubleSpiral2dDynamics(**kwargs)
+    elif dynamics_type == 'SwitchedLinearDynamics':
+        return SwitchedLinearDynamics(**kwargs)
     else:
         raise ValueError(f"Unknown dynamics: {dynamics_type}")
