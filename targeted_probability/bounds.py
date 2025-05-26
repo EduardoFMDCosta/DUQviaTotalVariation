@@ -21,6 +21,7 @@ def compute_targeted_bound(f: Dynamics,
                            bounds_partition: TargetedBounds,
                            target: Union[HyperRectangle, HyperRectangularPartition]):
 
+    num_target_sets = target.lower.shape[0]
     cov_noise = noise_distribution.covariance
     mixture_probs_partition = mixture.compute_probabilities(partition)
 
@@ -33,12 +34,16 @@ def compute_targeted_bound(f: Dynamics,
     p_min = o_maximization(- inf_kernel_target, mixture_probs_partition + bounds_partition.lb_delta, mixture_probs_partition + bounds_partition.ub_delta)
     p_max = o_maximization(sup_kernel_target, mixture_probs_partition + bounds_partition.lb_delta, mixture_probs_partition + bounds_partition.ub_delta)
 
-    lb_delta = torch.dot(inf_kernel_target, p_min) - torch.dot(kernel_at_locs_target, mixture_probs_partition)
-    ub_delta = torch.dot(sup_kernel_target, p_max) - torch.dot(kernel_at_locs_target, mixture_probs_partition)
+    lb_delta_components = inf_kernel_target * p_min - kernel_at_locs_target * mixture_probs_partition.unsqueeze(1).expand(-1, num_target_sets)
+    ub_delta_components = sup_kernel_target * p_max - kernel_at_locs_target * mixture_probs_partition.unsqueeze(1).expand(-1, num_target_sets)
 
+    lb_delta = lb_delta_components.sum(dim=0)
+    ub_delta = ub_delta_components.sum(dim=0)
+
+    contributions = ub_delta_components.sum(dim=1)
     bounds = TargetedBounds(lb_delta, ub_delta)
 
-    return bounds
+    return contributions, bounds
 
 def get_objective_targeted(f: Dynamics,
                            noise_distribution: Gaussian,

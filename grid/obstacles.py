@@ -16,5 +16,5 @@ def compute_hitting_prob(samples: torch.Tensor,
     # Compute hitting probabilities
     hitting_probabilities = hits.float().sum(dim=1) / n
 
-    return hitting_probabilities
+    return hitting_probabilities.sum(dim=1)
 
