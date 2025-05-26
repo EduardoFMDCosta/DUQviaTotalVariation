@@ -115,7 +115,7 @@ if __name__ == '__main__':
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     num_samples = 5000
-    horizon = 5
+    horizon = 30
     grid_size = 1000
 
     # Define unsafe set
