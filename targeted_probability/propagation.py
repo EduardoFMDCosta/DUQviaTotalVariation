@@ -44,7 +44,8 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
 
         mixtures.append(mixture_distribution)
         samples = mixture_distribution(num_samples)
-        aps.append(mixture_distribution.compute_probabilities(unsafe_sets))
+        mixture_hitting_prob = mixture_distribution.compute_probabilities(unsafe_sets)
+        aps.append(mixture_hitting_prob.sum())
 
         if t < prediction_horizon:
             shell = get_shell(samples)
@@ -111,7 +112,7 @@ if __name__ == '__main__':
     grid_size = 8000
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([5, 5, -3000]).unsqueeze(0), torch.tensor([6, 6, 3000]).unsqueeze(0))
+    unsafe_set = HyperRectangle(torch.tensor([[5, 5, -3000], [2, 2, -3000]]), torch.tensor([[6, 6, 3000], [3, 3, 3000]]))
 
     mixtures, aps, lbs, ubs = propagate_mixture_targeted_bounds(f=f,
                                       initial_distribution=initial_distribution,
