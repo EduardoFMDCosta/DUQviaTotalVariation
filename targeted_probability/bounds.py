@@ -25,9 +25,9 @@ def compute_targeted_bound(f: Dynamics,
     mixture_probs_partition = mixture.compute_probabilities(partition)
 
     # Compute alpha and beta for target
-    inf_kernel_target = bound_transition_kernel(f, partition, target, cov_noise, supremum=False).squeeze()
-    sup_kernel_target = bound_transition_kernel(f, partition, target, cov_noise, supremum=True).squeeze()
-    kernel_at_locs_target = transition_kernel(f, partition.locs, cov_noise, target).squeeze()
+    inf_kernel_target = bound_transition_kernel(f, partition, target, cov_noise, supremum=False)
+    sup_kernel_target = bound_transition_kernel(f, partition, target, cov_noise, supremum=True)
+    kernel_at_locs_target = transition_kernel(f, partition.locs, cov_noise, target)
 
     # Compute bounds for target
     p_min = o_maximization(- inf_kernel_target, mixture_probs_partition + bounds_partition.lb_delta, mixture_probs_partition + bounds_partition.ub_delta)
