@@ -4,11 +4,11 @@ from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
 
 
-def monte_carlo(f: Dynamics,
+def simulate_monte_carlo(f: Dynamics,
                 initial_distribution: Union[Gaussian, GaussianMixture],
                 noise_distribution: Gaussian,
-                prediction_horizon: int = 2,
-                num_samples: int = 1000):
+                prediction_horizon: int,
+                num_samples: int):
 
     samples = initial_distribution(num_samples)
 
@@ -23,8 +23,8 @@ def monte_carlo(f: Dynamics,
     return torch.stack(monte_carlo_samples)
 
 
-def sample_from_gmms(mixtures: list,
-                     num_samples: int = 1000):
+def simulate_mixtures(mixtures: list,
+                      num_samples: int):
 
     gmm_samples = []
 

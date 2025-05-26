@@ -1,8 +1,8 @@
 import torch
 from grid.regions import HyperRectangle
 
-def hitting_prob(samples: torch.Tensor,
-                 unsafe_sets: HyperRectangle):
+def compute_hitting_prob(samples: torch.Tensor,
+                         unsafe_sets: HyperRectangle):
 
     b, n, d = samples.shape
     m = unsafe_sets.lower.shape[0]  # number of obstacles

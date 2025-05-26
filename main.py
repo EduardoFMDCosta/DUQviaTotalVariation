@@ -1,8 +1,8 @@
 import torch
+from common.monte_carlo import simulate_mixtures, simulate_monte_carlo
 from dynamics.dynamics import LinearDynamics
 from distributions.distributions import Gaussian
 from plotting.plotting import plot_samples
-from common.monte_carlo import monte_carlo, sample_from_gmms
 from total_variation.propagation import propagate_mixture_tv_bounds
 from grid.regions import HyperRectangle, HyperRectangularPartition
 from grid.utils import get_shell_loc, uniform_grid
@@ -44,13 +44,13 @@ if __name__ == '__main__':
 
     print(tv_bounds)
 
-    monte_carlo_samples = monte_carlo(f=f,
+    monte_carlo_samples = simulate_monte_carlo(f=f,
                                       initial_distribution=initial_distribution,
                                       noise_distribution=noise_distribution,
                                       prediction_horizon=horizon,
                                       num_samples=num_samples)
 
-    gmm_samples = sample_from_gmms(mixtures=mixtures,
+    gmm_samples = simulate_mixtures(mixtures=mixtures,
                                   num_samples=num_samples)
 
     plot_samples(monte_carlo_samples, gmm_samples)

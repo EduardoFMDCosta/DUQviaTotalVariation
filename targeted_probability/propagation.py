@@ -1,11 +1,12 @@
 import torch
 from typing import Union
+from common.monte_carlo import simulate_monte_carlo, simulate_mixtures
 from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import LinearDynamics, factory, Dynamics, DubinsCarDynamics
+from grid.obstacles import compute_hitting_prob
 from grid.regions import HyperRectangle, HyperRectangularPartition
 from grid.utils import get_shell, get_shell_loc, uniform_grid
 from plotting.plotting import plot_confidence_interval, plot_partition, plot_samples
-from common.monte_carlo import hitting_prob, monte_carlo, sample_from_gmms
 from targeted_probability.bounds import compute_targeted_bound, TargetedBounds, get_objective_targeted
 from targeted_probability.transition_kernel import bound_transition_kernel
 
@@ -115,33 +116,34 @@ if __name__ == '__main__':
     cov_noise = torch.diag(torch.Tensor([0.001, 0.001, 0.0001]))
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
-    n_samples = 5000
+    num_samples = 5000
     horizon = 30
+    grid_size = 8000
 
     # Define unsafe set
     unsafe_set = HyperRectangle(torch.tensor([5, 5, -3000]).unsqueeze(0), torch.tensor([6, 6, 3000]).unsqueeze(0))
 
-    mixtures, aps, lbs, ubs = propagate_mixture_targeted_bounds(f,
-                                      initial_distribution,
-                                      noise_distribution,
-                                      unsafe_set,
-                                      initial_grid_size= 8000,
-                                      prediction_horizon= horizon,
-                                      num_samples= 1000,
-                                      plot= False)
-
-    monte_carlo_samples = monte_carlo(f=f,
+    mixtures, aps, lbs, ubs = propagate_mixture_targeted_bounds(f=f,
                                       initial_distribution=initial_distribution,
                                       noise_distribution=noise_distribution,
+                                      unsafe_sets=unsafe_set,
+                                      initial_grid_size=grid_size,
                                       prediction_horizon=horizon,
-                                      num_samples=1000)
+                                      num_samples=num_samples,
+                                      plot= False)
 
-    hitting_probs_mc = hitting_prob(monte_carlo_samples, unsafe_set)
+    monte_carlo_samples = simulate_monte_carlo(f=f,
+                                               initial_distribution=initial_distribution,
+                                               noise_distribution=noise_distribution,
+                                               prediction_horizon=horizon,
+                                               num_samples=num_samples)
+
+    hitting_probs_mc = compute_hitting_prob(monte_carlo_samples, unsafe_set)
 
     plot_confidence_interval(aps, lbs, ubs, hitting_probs_mc)
 
-    gmm_samples = sample_from_gmms(mixtures=mixtures,
-                                  num_samples=1000)
+    gmm_samples = simulate_mixtures(mixtures=mixtures,
+                                    num_samples=num_samples)
 
     plot_samples(monte_carlo_samples=monte_carlo_samples,
                  gmm_samples=gmm_samples,
