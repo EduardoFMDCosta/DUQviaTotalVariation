@@ -33,7 +33,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
 
     # Bound trajectories
     aps = []
-    lbs, ubs = [bounds_unsafe_sets.lb_delta], [bounds_unsafe_sets.ub_delta]
+    lbs, ubs = [bounds_unsafe_sets.lb_delta.sum()], [bounds_unsafe_sets.ub_delta.sum()]
 
     for t in range(prediction_horizon + 1):
 
@@ -56,12 +56,19 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
             if plot:
                 plot_partition(partition)
 
-            bounds_unsafe_sets = compute_targeted_bound(f=f,
+            contributions, bounds_unsafe_sets = compute_targeted_bound(f=f,
                                                      mixture=mixture_distribution,
                                                      noise_distribution=noise_distribution,
                                                      partition=partition,
                                                      bounds_partition=bounds_partition,
                                                      target=unsafe_sets)
+
+            contributions_partition, bounds_partition = compute_targeted_bound(f=f,
+                                                                       mixture=mixture_distribution,
+                                                                       noise_distribution=noise_distribution,
+                                                                       partition=partition,
+                                                                       bounds_partition=bounds_partition,
+                                                                       target=partition)
 
             # Refinement
             # objective = get_objective_targeted(f=f,
@@ -77,8 +84,8 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
             # Update weights
             probs = mixture_distribution.compute_probabilities(partition)
 
-            lbs.append(bounds_unsafe_sets.lb_delta)
-            ubs.append(bounds_unsafe_sets.ub_delta)
+            lbs.append(bounds_unsafe_sets.lb_delta.sum())
+            ubs.append(bounds_unsafe_sets.ub_delta.sum())
 
         print(f'End of computing for t={t}')
 
@@ -108,8 +115,8 @@ if __name__ == '__main__':
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     num_samples = 5000
-    horizon = 30
-    grid_size = 8000
+    horizon = 5
+    grid_size = 1000
 
     # Define unsafe set
     unsafe_set = HyperRectangle(torch.tensor([[5, 5, -3000], [2, 2, -3000]]), torch.tensor([[6, 6, 3000], [3, 3, 3000]]))
