@@ -5,7 +5,7 @@ from dynamics.dynamics import LinearDynamics, factory, Dynamics, DubinsCarDynami
 from grid.regions import HyperRectangle, HyperRectangularPartition
 from grid.utils import get_shell, get_shell_loc, uniform_grid
 from plotting.plotting import plot_confidence_interval, plot_partition, plot_samples
-from sampling.monte_carlo import hitting_prob, monte_carlo, sample_from_gmms
+from common.monte_carlo import hitting_prob, monte_carlo, sample_from_gmms
 from targeted_probability.bounds import compute_targeted_bound, TargetedBounds, get_objective_targeted
 from targeted_probability.transition_kernel import bound_transition_kernel
 
@@ -72,15 +72,15 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                                      target=unsafe_sets)
 
             # Refinement
-            objective = get_objective_targeted(f=f,
-                                               noise_distribution=noise_distribution,
-                                               target=unsafe_sets)
-            contributions = bound_transition_kernel(f, partition, unsafe_sets, cov_noise, supremum=True).squeeze()
-            partition = partition.refine(objective=objective,
-                                         contributions=contributions,
-                                         target=1.02,
-                                         pareto=0.3,
-                                         max_regions=3000)
+            # objective = get_objective_targeted(f=f,
+            #                                    noise_distribution=noise_distribution,
+            #                                    target=unsafe_sets)
+            # contributions = bound_transition_kernel(f, partition, unsafe_sets, cov_noise, supremum=True).squeeze()
+            # partition = partition.refine(objective=objective,
+            #                              contributions=contributions,
+            #                              target=1.02,
+            #                              pareto=0.3,
+            #                              max_regions=3000)
 
             # Update weights
             probs = mixture_distribution.compute_probabilities(partition)
@@ -125,7 +125,7 @@ if __name__ == '__main__':
                                       initial_distribution,
                                       noise_distribution,
                                       unsafe_set,
-                                      initial_grid_size= 64,
+                                      initial_grid_size= 8000,
                                       prediction_horizon= horizon,
                                       num_samples= 1000,
                                       plot= False)
