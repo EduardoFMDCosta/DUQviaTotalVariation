@@ -6,6 +6,8 @@ from grid.regions import HyperRectangle, HyperRectangularPartition
 from targeted_probability.transition_kernel import bound_transition_kernel, transition_kernel
 from targeted_probability.utils import o_maximization
 
+PRECISION = torch.finfo(torch.float32).eps
+
 class TargetedBounds:
     def __init__(self,
                  lb_delta: torch.Tensor,
@@ -44,6 +46,9 @@ def compute_targeted_bound(f: Dynamics,
     # Clamp as bounds need to lead to valid probs
     lb_delta.clamp_(min = -mixture_probs_target)
     ub_delta.clamp_(max = 1 - mixture_probs_target)
+
+    lb_delta[torch.abs(lb_delta) < PRECISION] = 0.0
+    ub_delta[torch.abs(ub_delta) < PRECISION] = 0.0
 
     contributions = ub_delta_components.sum(dim=1)
     bounds = TargetedBounds(lb_delta, ub_delta)
