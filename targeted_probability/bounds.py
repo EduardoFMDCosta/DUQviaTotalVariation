@@ -33,6 +33,10 @@ def compute_targeted_bound(f: Dynamics,
     sup_kernel_target = bound_transition_kernel(f, partition, target, cov_noise, supremum=True)
     kernel_at_locs_target = transition_kernel(f, partition.locs, cov_noise, target)
 
+    # Sanity check
+    assert (kernel_at_locs_target <= sup_kernel_target + PRECISION).all(), 'Kernel supremum is not greater than kernel at center locations'
+    assert (kernel_at_locs_target >= inf_kernel_target - PRECISION).all(), 'Kernel infimum is not smaller than kernel at center locations'
+
     # Compute bounds for target
     p_min = o_maximization(- inf_kernel_target, mixture_probs_partition + bounds_partition.lb_delta, mixture_probs_partition + bounds_partition.ub_delta)
     p_max = o_maximization(sup_kernel_target, mixture_probs_partition + bounds_partition.lb_delta, mixture_probs_partition + bounds_partition.ub_delta)
