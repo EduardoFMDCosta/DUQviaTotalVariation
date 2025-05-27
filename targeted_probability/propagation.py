@@ -114,7 +114,7 @@ if __name__ == '__main__':
     cov_noise = torch.diag(torch.Tensor([0.001, 0.001, 0.0001]))
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
-    num_samples = 5000
+    num_samples = 10000
     horizon = 30
     grid_size = 1000
 
