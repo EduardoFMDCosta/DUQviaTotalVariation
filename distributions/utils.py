@@ -28,4 +28,6 @@ def gaussian_probabilities(mean: torch.Tensor,
     if probs.shape[0] == 1:
         probs = probs.squeeze(0) # Squeeze it back to (n,) if means represent a sole Gaussian
 
+    probs.clamp_(min=0.0, max=1.0) # avoid numerical issues
+
     return probs

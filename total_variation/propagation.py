@@ -1,23 +1,13 @@
 import torch
 from typing import Union
 from itertools import accumulate
+from common.propagate_mixture import propagate
 from total_variation.bounds import compute_bound_tv, get_objective_tv_bound
 from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangularPartition
 from grid.utils import get_shell, get_shell_loc, uniform_grid
 from plotting.plotting import plot_partition
-
-
-def propagate(f: Dynamics,
-              weights: torch.Tensor,
-              locs: torch.Tensor,
-              noise_distribution: Gaussian):
-
-    cov_noise = noise_distribution.covariance
-    mixture_distribution = GaussianMixture(f(locs), cov_noise, weights)
-
-    return mixture_distribution
 
 def propagate_mixture_tv_bounds(f: Dynamics,
                                 initial_distribution: Union[Gaussian, GaussianMixture],
@@ -83,32 +73,3 @@ def propagate_mixture_tv_bounds(f: Dynamics,
     tv_bounds = [min(1, tv) for tv in accumulate(tv_bounds)]
 
     return mixtures, tv_bounds
-
-def monte_carlo(f: Dynamics,
-                initial_distribution: Union[Gaussian, GaussianMixture],
-                noise_distribution: Gaussian,
-                prediction_horizon: int = 2,
-                num_samples: int = 1000):
-
-    samples = initial_distribution(num_samples)
-
-    monte_carlo_samples = [samples]
-
-    for t in range(prediction_horizon):
-        noise_samples = noise_distribution(num_samples)
-        samples = f(samples) + noise_samples
-
-        monte_carlo_samples.append(samples)
-
-    return monte_carlo_samples
-
-def sample_from_gmm(mixtures: list,
-                    num_samples: int = 1000):
-
-    gmm_samples = []
-
-    for mixture in mixtures:
-        samples = mixture(num_samples)
-        gmm_samples.append(samples)
-
-    return gmm_samples

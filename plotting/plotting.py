@@ -14,56 +14,71 @@ plt.rcParams.update({
     'text.latex.preamble': r'\usepackage{amsfonts}'
 })
 
-def plot_samples(monte_carlo_samples: list,
-                 gmm_samples: list):
+def plot_samples(monte_carlo_samples: torch.Tensor,
+                 gmm_samples: torch.Tensor,
+                 unsafe_sets: HyperRectangle = None):
 
-    assert len(monte_carlo_samples) == len(gmm_samples)
+    if monte_carlo_samples.shape[-1] >= 2:
+        assert monte_carlo_samples.shape[0] == gmm_samples.shape[0]
 
-    T = len(monte_carlo_samples)
-    colors = cm.viridis(np.linspace(0, 1, T))  # color for each timestep
+        T = monte_carlo_samples.shape[0]
+        colors = cm.viridis(np.linspace(0, 1, T))  # color for each timestep
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
-    titles = ['Monte Carlo', 'GMM']
-    samples_list = [monte_carlo_samples, gmm_samples]
+        fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+        titles = ['Monte Carlo', 'GMM']
+        samples_list = [monte_carlo_samples, gmm_samples]
 
-    # Compute global bounds for consistent axis limits and binning
-    all_samples = torch.cat(monte_carlo_samples + gmm_samples, dim=0).cpu().numpy()
-    xmin, xmax = all_samples[:, 0].min(), all_samples[:, 0].max()
-    ymin, ymax = all_samples[:, 1].min(), all_samples[:, 1].max()
+        # Compute global bounds for consistent axis limits and binning
+        all_samples = torch.cat([monte_carlo_samples, gmm_samples], dim=0).cpu().numpy()
+        xmin, xmax = all_samples[:, 0].min(), all_samples[:, 0].max()
+        ymin, ymax = all_samples[:, 1].min(), all_samples[:, 1].max()
 
-    # Define bin edges (you can customize bin count)
-    bins = 100
-    x_edges = np.linspace(xmin, xmax, bins + 1)
-    y_edges = np.linspace(ymin, ymax, bins + 1)
+        # Define bin edges (you can customize bin count)
+        bins = 100
+        x_edges = np.linspace(xmin, xmax, bins + 1)
+        y_edges = np.linspace(ymin, ymax, bins + 1)
 
-    for ax, samples, title in zip(axes, samples_list, titles):
-        for t in range(T):
-            data = samples[t].cpu().numpy()
-            H, xedges, yedges = np.histogram2d(data[:, 0], data[:, 1], bins=[x_edges, y_edges])
+        for ax, samples, title in zip(axes, samples_list, titles):
+            for t in range(T):
+                data = samples[t].cpu().numpy()
+                H, xedges, yedges = np.histogram2d(data[:, 0], data[:, 1], bins=[x_edges, y_edges])
 
-            # Normalize for consistent transparency
-            H = H.T  # transpose to match image orientation
+                # Normalize for consistent transparency
+                H = H.T  # transpose to match image orientation
 
-            H_masked = ma.masked_where(H == 0, H)  # mask zero entries
+                H_masked = ma.masked_where(H == 0, H)  # mask zero entries
 
-            # Use imshow with alpha blending
-            ax.imshow(
-                H_masked,
-                extent=[xmin, xmax, ymin, ymax],
-                origin='lower',
-                cmap=cm.viridis,
-                alpha=0.7,  # transparency per time step
-            )
+                # Use imshow with alpha blending
+                ax.imshow(
+                    H_masked,
+                    extent=[xmin, xmax, ymin, ymax],
+                    origin='lower',
+                    cmap=cm.viridis,
+                    alpha=0.7,  # transparency per time step
+                )
 
-        ax.set_title(title)
-        ax.set_xlim(xmin, xmax)
-        ax.set_ylim(ymin, ymax)
-        ax.set_xlabel(r'$x_1$')
-        ax.set_ylabel(r'$x_2$')
-        ax.set_aspect('equal')
+            # Plot unsafe sets if provided
+            if unsafe_sets is not None:
+                lower = unsafe_sets.lower.cpu().numpy()
+                upper = unsafe_sets.upper.cpu().numpy()
+                for l, u in zip(lower, upper):
+                    width, height = u[0] - l[0], u[1] - l[1]
+                    rect = patches.Rectangle((l[0], l[1]), width, height,
+                                             linewidth=1.5,
+                                             edgecolor='r',
+                                             facecolor='red',
+                                             alpha=0.4)
+                    ax.add_patch(rect)
 
-    plt.tight_layout()
-    plt.show()
+            ax.set_title(title)
+            ax.set_xlim(xmin, xmax)
+            ax.set_ylim(ymin, ymax)
+            ax.set_xlabel(r'$x_1$')
+            ax.set_ylabel(r'$x_2$')
+            ax.set_aspect('equal')
+
+        plt.tight_layout()
+        plt.show()
 
 def plot_partition(partition: HyperRectangularPartition):
 
@@ -102,3 +117,25 @@ def plot_partition(partition: HyperRectangularPartition):
 
         plt.tight_layout()
         plt.show()
+
+def plot_confidence_interval(gmm_prob_set: torch.Tensor,
+                             alpha_set: torch.Tensor,
+                             beta_set: torch.Tensor,
+                             actual_set_prob: torch.Tensor = None):
+
+    t = torch.arange(len(gmm_prob_set))
+    lbs = gmm_prob_set + alpha_set
+    ubs = gmm_prob_set + beta_set
+
+    plt.fill_between(t, lbs, ubs, color="lightgrey", label = r'Bounds')
+
+    plt.plot(t, gmm_prob_set, label=r'$\hat{\mathbb{P}}_{x_t}(U)$', linestyle='-', marker='s', color='red')
+    if actual_set_prob is not None:
+        plt.plot(t, actual_set_prob, label=r'$\mathbb{P}_{x_t}(U)$', linestyle='-', marker='s', color='green')
+
+    plt.xlabel("Time step")
+    plt.ylabel("Probability")
+    plt.legend(loc="upper left")
+    plt.grid(True)
+
+    plt.show()
