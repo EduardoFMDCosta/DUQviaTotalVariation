@@ -24,6 +24,7 @@ def compute_targeted_bound(f: Dynamics,
     num_target_sets = target.lower.shape[0]
     cov_noise = noise_distribution.covariance
     mixture_probs_partition = mixture.compute_probabilities(partition)
+    mixture_probs_target = mixture.compute_probabilities(target)
 
     # Compute alpha and beta for target
     inf_kernel_target = bound_transition_kernel(f, partition, target, cov_noise, supremum=False)
@@ -39,6 +40,10 @@ def compute_targeted_bound(f: Dynamics,
 
     lb_delta = lb_delta_components.sum(dim=0)
     ub_delta = ub_delta_components.sum(dim=0)
+
+    # Clamp as bounds need to lead to valid probs
+    lb_delta.clamp_(min = -mixture_probs_target)
+    ub_delta.clamp_(max = 1 - mixture_probs_target)
 
     contributions = ub_delta_components.sum(dim=1)
     bounds = TargetedBounds(lb_delta, ub_delta)
