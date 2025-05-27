@@ -127,6 +127,8 @@ def plot_confidence_interval(gmm_prob_set: torch.Tensor,
     lbs = gmm_prob_set + alpha_set
     ubs = gmm_prob_set + beta_set
 
+    plt.plot(t, lbs, linestyle='--', marker='s', color='grey')
+    plt.plot(t, ubs, linestyle='--', marker='s', color='grey')
     plt.fill_between(t, lbs, ubs, color="lightgrey", label = r'Bounds')
 
     plt.plot(t, gmm_prob_set, label=r'$\hat{\mathbb{P}}_{x_t}(U)$', linestyle='-', marker='s', color='red')
@@ -135,7 +137,10 @@ def plot_confidence_interval(gmm_prob_set: torch.Tensor,
 
     plt.xlabel("Time step")
     plt.ylabel("Probability")
-    plt.legend(loc="upper left")
+    plt.legend(bbox_to_anchor=(0.5, -0.1), loc='upper center', ncol=3)
     plt.grid(True)
+
+    plt.tight_layout()
+    plt.subplots_adjust(bottom=0.2)  # Increase bottom margin
 
     plt.show()
