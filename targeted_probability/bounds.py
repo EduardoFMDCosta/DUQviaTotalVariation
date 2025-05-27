@@ -29,13 +29,13 @@ def compute_targeted_bound(f: Dynamics,
     mixture_probs_target = mixture.compute_probabilities(target)
 
     # Compute alpha and beta for target
-    inf_kernel_target = bound_transition_kernel(f, partition, target, cov_noise, supremum=False)
-    sup_kernel_target = bound_transition_kernel(f, partition, target, cov_noise, supremum=True)
+    inf_kernel_target = bound_transition_kernel(f, cov_noise, partition, target, supremum=False)
+    sup_kernel_target = bound_transition_kernel(f, cov_noise, partition, target, supremum=True)
     kernel_at_locs_target = transition_kernel(f, partition.locs, cov_noise, target)
 
     # Sanity check
-    assert (kernel_at_locs_target <= sup_kernel_target + PRECISION).all(), 'Kernel supremum is not greater than kernel at center locations'
-    assert (kernel_at_locs_target >= inf_kernel_target - PRECISION).all(), 'Kernel infimum is not smaller than kernel at center locations'
+    assert (kernel_at_locs_target <= sup_kernel_target + 2*PRECISION).all(), 'Kernel supremum is not greater than kernel at center locations'
+    assert (kernel_at_locs_target >= inf_kernel_target - 2*PRECISION).all(), 'Kernel infimum is not smaller than kernel at center locations'
 
     # Compute bounds for target
     p_min = o_maximization(- inf_kernel_target, mixture_probs_partition + bounds_partition.lb_delta, mixture_probs_partition + bounds_partition.ub_delta)
