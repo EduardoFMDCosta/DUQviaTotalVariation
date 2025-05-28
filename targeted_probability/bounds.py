@@ -34,8 +34,8 @@ def compute_targeted_bound(f: Dynamics,
     kernel_at_locs_target = transition_kernel(f, partition.locs, cov_noise, target)
 
     # Sanity check
-    assert (kernel_at_locs_target <= sup_kernel_target + 2*PRECISION).all(), 'Kernel supremum is not greater than kernel at center locations'
-    assert (kernel_at_locs_target >= inf_kernel_target - 2*PRECISION).all(), 'Kernel infimum is not smaller than kernel at center locations'
+    assert (kernel_at_locs_target <= sup_kernel_target + PRECISION).all(), 'Kernel supremum is not greater than kernel at center locations'
+    assert (kernel_at_locs_target >= inf_kernel_target - PRECISION).all(), 'Kernel infimum is not smaller than kernel at center locations'
 
     # Compute bounds for target
     p_min = o_maximization(- inf_kernel_target, mixture_probs_partition + bounds_partition.lb_delta, mixture_probs_partition + bounds_partition.ub_delta)
@@ -46,6 +46,9 @@ def compute_targeted_bound(f: Dynamics,
 
     lb_delta = lb_delta_components.sum(dim=0)
     ub_delta = ub_delta_components.sum(dim=0)
+
+    assert (lb_delta <= PRECISION).all(), 'Lower bound cannot be positive'
+    assert (ub_delta >= -PRECISION).all(), 'Upper bound cannot be negative'
 
     # Clamp as bounds need to lead to valid probs
     lb_delta.clamp_(min = -mixture_probs_target)
