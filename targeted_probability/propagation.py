@@ -45,7 +45,8 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
         mixtures.append(mixture_distribution)
         samples = mixture_distribution(num_samples)
         mixture_hitting_prob = mixture_distribution.compute_probabilities(unsafe_sets)
-        aps.append(mixture_hitting_prob.sum())
+        mixture_hitting_prob_all = mixture_hitting_prob.sum()
+        aps.append(mixture_hitting_prob_all)
 
         if t < prediction_horizon:
             shell = get_shell(samples)
@@ -84,12 +85,20 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
             # Update weights
             probs = mixture_distribution.compute_probabilities(partition)
 
-            lbs.append(bounds_unsafe_sets.lb_delta.sum())
-            ubs.append(bounds_unsafe_sets.ub_delta.sum())
+            lb_hitting_prob_all = bounds_unsafe_sets.lb_delta.sum()
+            lbs.append(lb_hitting_prob_all)
+
+            ub_hitting_prob_all = bounds_unsafe_sets.ub_delta.sum()
+            ubs.append(ub_hitting_prob_all)
 
         print(f'End of computing for t={t}')
 
     lbs, aps, ubs = torch.tensor(lbs), torch.tensor(aps), torch.tensor(ubs)
+
+    # Clamping for valid probability bounds
+    lbs = torch.maximum(lbs, -aps)
+    ubs = torch.minimum(ubs, 1-aps)
+
     return mixtures, aps, lbs, ubs
 
 
@@ -102,24 +111,25 @@ if __name__ == '__main__':
             [0.74, 0.10],
             [0.05, 0.82]
         ])
-    f = DubinsCarDynamics()
+    f = LinearDynamics(A)
+    #f = DubinsCarDynamics()
 
     # Initial distribution
-    mean_initial = torch.Tensor([5., 5., 0.1])
-    cov_initial = torch.diag(torch.Tensor([0.002, 0.002, 0.0001]))
+    mean_initial = torch.Tensor([5., 5.])
+    cov_initial = torch.diag(torch.Tensor([0.002, 0.002]))
     initial_distribution = Gaussian(mean_initial, cov_initial)
 
     # Noise distribution
-    mean_noise = torch.Tensor([0, 0, 0])
-    cov_noise = torch.diag(torch.Tensor([0.001, 0.001, 0.0001]))
+    mean_noise = torch.Tensor([0, 0])
+    cov_noise = torch.diag(torch.Tensor([0.01, 0.01]))
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     num_samples = 10000
     horizon = 30
-    grid_size = 1000
+    grid_size = 36
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([[5, 5, -3000], [2, 2, -3000]]), torch.tensor([[6, 6, 3000], [3, 3, 3000]]))
+    unsafe_set = HyperRectangle(torch.tensor([[2, 2], [0.5, 0]]), torch.tensor([[3, 3], [1.5, 1]]))
 
     mixtures, aps, lbs, ubs = propagate_mixture_targeted_bounds(f=f,
                                       initial_distribution=initial_distribution,
