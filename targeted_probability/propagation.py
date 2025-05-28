@@ -23,6 +23,9 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
     # Parameters
     num_unsafe_sets = unsafe_sets.lower.shape[0]
 
+    shell = torch.tensor([[-3, -3], [8, 8]])
+    loc_shell = get_shell_loc(shell)
+
     # Initialize bounds
     bounds_partition = TargetedBounds(torch.zeros(initial_grid_size+1), torch.zeros(initial_grid_size+1))
     bounds_unsafe_sets = TargetedBounds(torch.zeros(num_unsafe_sets), torch.zeros(num_unsafe_sets))
@@ -49,8 +52,8 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
         aps.append(mixture_hitting_prob_all)
 
         if t < prediction_horizon:
-            shell = get_shell(samples)
-            loc_shell = get_shell_loc(shell)
+            #shell = get_shell(samples)
+            #loc_shell = get_shell_loc(shell)
 
             inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
             partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
@@ -125,8 +128,8 @@ if __name__ == '__main__':
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     num_samples = 10000
-    horizon = 30
-    grid_size = 36
+    horizon = 3
+    grid_size = 225
 
     # Define unsafe set
     unsafe_set = HyperRectangle(torch.tensor([[2, 2], [0.5, 0]]), torch.tensor([[3, 3], [1.5, 1]]))
@@ -152,6 +155,8 @@ if __name__ == '__main__':
 
     gmm_samples = simulate_mixtures(mixtures=mixtures,
                                     num_samples=num_samples)
+
+    check = compute_hitting_prob(gmm_samples, unsafe_set)
 
     plot_samples(monte_carlo_samples=monte_carlo_samples,
                  gmm_samples=gmm_samples,
