@@ -18,32 +18,59 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                       initial_grid_size: int = 10,
                                       prediction_horizon: int = 2,
                                       num_samples: int = 1000,
-                                      plot: bool = False):
+                                      plot: bool = True):
 
     # Parameters
     num_unsafe_sets = unsafe_sets.lower.shape[0]
 
+    # Initialize coarse partition
     shell = torch.tensor([[-3, -3], [8, 8]])
     loc_shell = get_shell_loc(shell)
+    inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
+    partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
+
+    # Initialize mixture
+    mixture_distribution = initial_distribution
+    mixtures = [mixture_distribution]
+
+    # Refine initial partition
+    objective = get_objective_targeted(mixture=mixture_distribution)
+    partition = partition.refine(objective=objective,
+                                 contributions=mixture_distribution.compute_probabilities(partition),
+                                 target=0.01,
+                                 pareto=0.3,
+                                 max_regions=5000)
+    if True:
+        plot_partition(partition)
+
+    # Compute mixture weights
+    probs = mixture_distribution.compute_probabilities(partition)
 
     # Initialize bounds
-    bounds_partition = TargetedBounds(torch.zeros(initial_grid_size+1), torch.zeros(initial_grid_size+1))
+    bounds_partition = TargetedBounds(torch.zeros(partition.lower.shape[0]), torch.zeros(partition.lower.shape[0]))
     bounds_unsafe_sets = TargetedBounds(torch.zeros(num_unsafe_sets), torch.zeros(num_unsafe_sets))
 
-    mixtures = []
-    probs = None
-    partition = None
-
     # Bound trajectories
-    aps = []
+    aps = [mixture_distribution.compute_probabilities(unsafe_sets).sum()]
     lbs, ubs = [bounds_unsafe_sets.lb_delta.sum()], [bounds_unsafe_sets.ub_delta.sum()]
 
-    for t in range(prediction_horizon + 1):
+    for t in range(prediction_horizon):
 
-        if t == 0:
-            mixture_distribution = initial_distribution
-        else:
-            mixture_distribution = propagate(f, probs, partition.locs, noise_distribution)
+        mixture_distribution = propagate(f, probs, partition.locs, noise_distribution)
+
+        # Initialize coarse grid
+        inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
+        next_partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
+
+        # Refinement
+        objective = get_objective_targeted(mixture=mixture_distribution)
+        next_partition = next_partition.refine(objective=objective,
+                                     contributions=mixture_distribution.compute_probabilities(next_partition),
+                                     target=0.01,
+                                     pareto=0.3,
+                                     max_regions=5000)
+        if True:
+            plot_partition(next_partition)
 
         mixtures.append(mixture_distribution)
         samples = mixture_distribution(num_samples)
@@ -51,48 +78,31 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
         mixture_hitting_prob_all = mixture_hitting_prob.sum()
         aps.append(mixture_hitting_prob_all)
 
-        if t < prediction_horizon:
-            #shell = get_shell(samples)
-            #loc_shell = get_shell_loc(shell)
-
-            inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
-            partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
-            if plot:
-                plot_partition(partition)
-
-            contributions, bounds_unsafe_sets = compute_targeted_bound(f=f,
-                                                     mixture=mixture_distribution,
+        contributions, bounds_unsafe_sets = compute_targeted_bound(f=f,
+                                                     partition_probs=probs,
                                                      noise_distribution=noise_distribution,
                                                      partition=partition,
                                                      bounds_partition=bounds_partition,
                                                      target=unsafe_sets)
 
-            contributions_partition, bounds_partition = compute_targeted_bound(f=f,
-                                                                       mixture=mixture_distribution,
+        contributions_partition, bounds_partition = compute_targeted_bound(f=f,
+                                                                       partition_probs=probs,
                                                                        noise_distribution=noise_distribution,
                                                                        partition=partition,
                                                                        bounds_partition=bounds_partition,
-                                                                       target=partition)
+                                                                       target=next_partition)
 
-            # Refinement
-            # objective = get_objective_targeted(f=f,
-            #                                    noise_distribution=noise_distribution,
-            #                                    target=unsafe_sets)
-            # contributions = bound_transition_kernel(f, partition, unsafe_sets, cov_noise, supremum=True).squeeze()
-            # partition = partition.refine(objective=objective,
-            #                              contributions=contributions,
-            #                              target=1.02,
-            #                              pareto=0.3,
-            #                              max_regions=3000)
+        # Update partition
+        partition = next_partition
 
-            # Update weights
-            probs = mixture_distribution.compute_probabilities(partition)
+        # Update weights
+        probs = mixture_distribution.compute_probabilities(partition)
 
-            lb_hitting_prob_all = bounds_unsafe_sets.lb_delta.sum()
-            lbs.append(lb_hitting_prob_all)
+        lb_hitting_prob_all = bounds_unsafe_sets.lb_delta.sum()
+        lbs.append(lb_hitting_prob_all)
 
-            ub_hitting_prob_all = bounds_unsafe_sets.ub_delta.sum()
-            ubs.append(ub_hitting_prob_all)
+        ub_hitting_prob_all = bounds_unsafe_sets.ub_delta.sum()
+        ubs.append(ub_hitting_prob_all)
 
         print(f'End of computing for t={t}')
 
@@ -128,11 +138,11 @@ if __name__ == '__main__':
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     num_samples = 10000
-    horizon = 3
-    grid_size = 225
+    horizon = 20
+    grid_size = 4
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([[2, 2], [0.5, 0]]), torch.tensor([[3, 3], [1.5, 1]]))
+    unsafe_set = HyperRectangle(torch.tensor([[3, 3], [1, 0]]), torch.tensor([[3.5, 3.5], [1.5, 1]]))
 
     mixtures, aps, lbs, ubs = propagate_mixture_targeted_bounds(f=f,
                                       initial_distribution=initial_distribution,
