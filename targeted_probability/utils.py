@@ -1,57 +1,52 @@
 import torch
+from copy import deepcopy
 
 def o_maximization(coeffs: torch.Tensor,
                    lower_bounds: torch.Tensor,
                    upper_bounds: torch.Tensor):
 
+    # TODO: Recheck this code
+
     n, m = coeffs.shape
 
-    sorted_coeffs, order = torch.sort(coeffs, dim=0, descending=True) # sort in descending order
+    # Sort coefficients descending per column
+    order = torch.argsort(-coeffs, dim=0)  # (n, m)
 
-    lb = lower_bounds[:, None].expand(n, m)
-    ub = upper_bounds[:, None].expand(n, m)
+    # Get gap and initial p
+    p = lower_bounds[:, None].repeat(1, m)  # (n, m)
+    gap = upper_bounds[:, None] - p  # (n, m)
+    rem = 1 - torch.sum(p, dim=0)  # (m,)
 
-    p = lb.clone() # set initial p to lower bounds
-    remainder = 1 - torch.sum(lb, dim=0)
+    # Rearranged gap based on order
+    gap_sorted = torch.gather(gap, 0, order)  # (n, m)
 
-    gap = ub - lb # compute gap
+    # Cumulative gap along sorted order
+    cumgap = torch.cumsum(gap_sorted, dim=0)  # (n, m)
 
-    # Gather gap and index map in sorted order
-    batch_indices = torch.arange(m)[None, :].expand(n, m)
-    ordered_gap = gap.gather(0, order)
+    # Calculate rem_state for each position
+    # rem_state = max(rem - cumgap + gap_sorted, 0)
+    rem_expanded = rem.unsqueeze(0).expand(n, m)  # (n, m)
+    rem_state = torch.clamp(rem_expanded - cumgap + gap_sorted, min=0.0)  # (n, m)
 
-    cumgap = torch.cumsum(ordered_gap, dim=0)
+    # Make mask of whether full gap can be added or just rem_state
+    full_add_mask = gap_sorted <= rem_state  # (n, m)
 
-    # rem_state = max(rem - cumgap[idx] + gap[o], 0)
-    # We'll find the first index where rem <= cumgap[idx] - gap[o] for each column
+    # Allocate result matrix to fill
+    p_out = p.clone()  # (n, m)
 
-    # Precompute rem - cumgap + gap[o]
-    # For gap[o], we need to reverse the gather to find gap[order]
-    ordered_o = order  # (n, m)
-    gap_at_o = gap.gather(0, ordered_o)  # (n, m)
+    # For each column, find first index where partial addition occurs
+    first_partial = (~full_add_mask).float().cumsum(dim=0) == 1  # (n, m)
 
-    rem_expand = remainder[None, :].expand(n, m)
-    rem_state = (rem_expand - cumgap + gap_at_o).clamp(min=0.0)  # (n, m)
+    # Add full where possible
+    full_add = full_add_mask * gap_sorted  # (n, m)
 
-    # Determine mask: where gap[o] < rem_state → take full gap[o], else partial then break
-    full_mask = gap_at_o < rem_state  # (n, m)
+    # Add partial only at the first partial location
+    partial_add = first_partial * rem_state  # (n, m)
 
-    # Compute cumulative full_mask to find stopping index per column
-    full_mask_cumsum = torch.cumsum(full_mask.int(), dim=0)  # (n, m)
-    stop_idx = (full_mask_cumsum == full_mask_cumsum[-1:]).int().argmax(dim=0)  # (m,)
+    # Combine both additions
+    total_add = full_add + partial_add  # (n, m)
 
-    # Build final p
-    # First, add gap[o] for all rows before stop_idx
-    add_full = full_mask * gap_at_o  # (n, m)
+    # Scatter additions back to original indices
+    p_out.scatter_add_(0, order, total_add)
 
-    # Now add rem_state only at stop_idx
-    idx_mask = torch.arange(n)[:, None] == stop_idx[None, :]  # (n, m)
-    add_partial = idx_mask * (~full_mask) * rem_state  # add rem_state only at stop_idx
-
-    # Total addition
-    total_add = add_full + add_partial  # (n, m)
-
-    # Scatter the additions back to original positions
-    p.scatter_add_(0, order, total_add)
-
-    return p
+    return p_out
