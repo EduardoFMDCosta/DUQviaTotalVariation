@@ -18,7 +18,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                       initial_grid_size: int = 10,
                                       prediction_horizon: int = 2,
                                       num_samples: int = 1000,
-                                      plot: bool = True):
+                                      plot: bool = False):
 
     # Parameters
     num_unsafe_sets = unsafe_sets.lower.shape[0]
@@ -39,7 +39,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                  contributions=mixture_distribution.compute_probabilities(partition),
                                  target=0.01,
                                  max_regions=5000)
-    if True:
+    if plot:
         plot_partition(partition)
 
     # Compute mixture weights
@@ -69,7 +69,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                      contributions=mixture_distribution.compute_probabilities(next_partition),
                                      target=0.01,
                                      max_regions=5000)
-        if True:
+        if plot:
             plot_partition(next_partition)
 
         mixtures.append(mixture_distribution)
@@ -139,7 +139,7 @@ if __name__ == '__main__':
 
     num_samples = 10000
     horizon = 50
-    grid_size = 1600
+    grid_size = 100
 
     # Define unsafe set
     unsafe_set = HyperRectangle(torch.tensor([[3.8, 2], [2, 1]]), torch.tensor([[4.8, 3.5], [3, 2]]))
