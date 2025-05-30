@@ -23,15 +23,15 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
     # Parameters
     num_unsafe_sets = unsafe_sets.lower.shape[0]
 
-    # Initialize coarse partition
-    shell = torch.tensor([[-3, -3], [8, 8]])
-    loc_shell = get_shell_loc(shell)
-    inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
-    partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
-
     # Initialize mixture
     mixture_distribution = initial_distribution
     mixtures = [mixture_distribution]
+
+    # Initialize coarse partition
+    shell = get_shell(mixture_distribution(num_samples))
+    loc_shell = get_shell_loc(shell)
+    inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
+    partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
 
     # Refine initial partition
     objective = get_objective_targeted(mixture=mixture_distribution)
@@ -58,6 +58,8 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
         mixture_distribution = propagate(f, probs, partition.locs, noise_distribution)
 
         # Initialize coarse grid
+        shell = get_shell(mixture_distribution(num_samples))
+        loc_shell = get_shell_loc(shell)
         inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
         next_partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
 
@@ -137,7 +139,7 @@ if __name__ == '__main__':
 
     num_samples = 10000
     horizon = 50
-    grid_size = 225
+    grid_size = 1600
 
     # Define unsafe set
     unsafe_set = HyperRectangle(torch.tensor([[3.8, 2], [2, 1]]), torch.tensor([[4.8, 3.5], [3, 2]]))

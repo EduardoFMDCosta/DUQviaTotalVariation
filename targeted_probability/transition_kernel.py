@@ -49,15 +49,9 @@ def bound_transition_kernel(f: Dynamics,
 
     n, m = partition.lower.shape[0], target.lower.shape[0]
 
-    # Mask checking whether partition_i == target_j
-    lower_equality = (partition.lower[:, None, :] == target.lower[None, :, :])
-    upper_equality = (partition.upper[:, None, :] == target.upper[None, :, :])
-    mask_set_equality = (lower_equality.all(dim=2) & upper_equality.all(dim=2)) # (n, m)
-
-    # Mask checking whether partition_i is absorbing
-    from_absorbing = torch.zeros(n).bool()
-    from_absorbing[-1] = True
-    mask_from_absorbing = from_absorbing[:, None].expand(-1, m)
+    from_unbounded = torch.zeros(n).bool()
+    from_unbounded[-1] = True
+    mask_from_unbounded = from_unbounded[:, None].expand(-1, m)
 
     # Mask checking whether target_j is unbounded (complement of the shell)
     target_unbounded = torch.zeros(m).bool()
@@ -68,11 +62,7 @@ def bound_transition_kernel(f: Dynamics,
     # Initialize kernel bounds (n, m)
     kernel_bounds = torch.zeros(n, m)
 
-    # From absorbing states, both sup and inf are zero or one depending on the target
-    kernel_bounds[mask_from_absorbing & mask_set_equality] = 1.0
-    kernel_bounds[mask_from_absorbing & ~mask_set_equality] = 0.0
-
-    compact_from = bp.HyperRectangle(lower=partition.lower[~from_absorbing], upper=partition.upper[~from_absorbing])
+    compact_from = bp.HyperRectangle(lower=partition.lower[~from_unbounded], upper=partition.upper[~from_unbounded])
     compact_to = bp.HyperRectangle(lower=target.lower[~target_unbounded], upper=target.upper[~target_unbounded])
 
     ibp_from = net.ibp(bp.HyperRectangle(compact_from.lower, compact_from.upper))
@@ -87,23 +77,28 @@ def bound_transition_kernel(f: Dynamics,
         dist_upper = torch.abs(compact_to.center[None, :, :] - ibp_from.upper[:, None, :])
         optimal_means = torch.where(dist_lower > dist_upper, ibp_from.lower[:, None, :], ibp_from.upper[:, None, :])
 
-    kernel_bounds[~mask_from_absorbing & ~mask_target_unbounded] = kernel_matrix(optimal_z=optimal_means,
+    kernel_bounds[~mask_from_unbounded & ~mask_target_unbounded] = kernel_matrix(optimal_z=optimal_means,
                                                                                  covariance=covariance,
                                                                                  target=compact_to).reshape(-1)
 
     # From non-absorbing (thus compact) states, compute sup or inf for unbounded targets
     if mask_target_unbounded.any():
         if supremum:
-            dist_lower = torch.abs(partition.shell.center[None, :] - ibp_from.lower[:, None, :])
-            dist_upper = torch.abs(partition.shell.center[None, :] - ibp_from.upper[:, None, :])
+            dist_lower = torch.abs(target.shell.center[None, :] - ibp_from.lower[:, None, :])
+            dist_upper = torch.abs(target.shell.center[None, :] - ibp_from.upper[:, None, :])
             optimal_means = torch.where(dist_lower > dist_upper, ibp_from.lower[:, None, :], ibp_from.upper[:, None, :])
         else:
-            optimal_means = torch.clamp(partition.shell.center.unsqueeze(0),
+            optimal_means = torch.clamp(target.shell.center.unsqueeze(0),
                                         min=ibp_from.lower.unsqueeze(1),
                                         max=ibp_from.upper.unsqueeze(1))
 
-        kernel_bounds[~mask_from_absorbing & mask_target_unbounded] = 1 - kernel_matrix(optimal_z=optimal_means,
+        kernel_bounds[~mask_from_unbounded & mask_target_unbounded] = 1 - kernel_matrix(optimal_z=optimal_means,
                                                                                         covariance=covariance,
-                                                                                        target=partition.shell).reshape(-1)
+                                                                                        target=target.shell).reshape(-1)
+
+    if supremum:
+        kernel_bounds[mask_from_unbounded] = 1.0
+    else:
+        kernel_bounds[mask_from_unbounded] = 0.0
 
     return kernel_bounds
