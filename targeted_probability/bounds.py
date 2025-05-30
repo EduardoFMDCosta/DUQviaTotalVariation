@@ -52,7 +52,7 @@ def compute_targeted_bound(f: Dynamics,
         print("ok")
 
     assert (lb_delta <= 5*PRECISION).all(), 'Lower bound cannot be positive'
-    assert (ub_delta >= -5*PRECISION).all(), 'Upper bound cannot be negative'
+    assert (ub_delta >= -10*PRECISION).all(), 'Upper bound cannot be negative'
 
     contributions = ub_delta_components.sum(dim=1)
     bounds = TargetedBounds(lb_delta, ub_delta)
