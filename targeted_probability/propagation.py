@@ -121,8 +121,8 @@ if __name__ == '__main__':
     # System parameters
     A = torch.Tensor(
         [
-            [0.74, 0.10],
-            [0.05, 0.82]
+            [0.84, 0.10],
+            [0.05, 0.72]
         ])
     f = LinearDynamics(A)
     #f = DubinsCarDynamics()
@@ -138,11 +138,11 @@ if __name__ == '__main__':
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     num_samples = 10000
-    horizon = 20
-    grid_size = 4
+    horizon = 50
+    grid_size = 225
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([[3, 3], [1, 0]]), torch.tensor([[3.5, 3.5], [1.5, 1]]))
+    unsafe_set = HyperRectangle(torch.tensor([[3.8, 2], [2, 1]]), torch.tensor([[4.8, 3.5], [3, 2]]))
 
     mixtures, aps, lbs, ubs = propagate_mixture_targeted_bounds(f=f,
                                       initial_distribution=initial_distribution,
