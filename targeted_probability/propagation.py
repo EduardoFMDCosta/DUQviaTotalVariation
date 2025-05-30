@@ -38,7 +38,6 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
     partition = partition.refine(objective=objective,
                                  contributions=mixture_distribution.compute_probabilities(partition),
                                  target=0.01,
-                                 pareto=0.3,
                                  max_regions=5000)
     if True:
         plot_partition(partition)
@@ -67,7 +66,6 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
         next_partition = next_partition.refine(objective=objective,
                                      contributions=mixture_distribution.compute_probabilities(next_partition),
                                      target=0.01,
-                                     pareto=0.3,
                                      max_regions=5000)
         if True:
             plot_partition(next_partition)

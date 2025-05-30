@@ -147,15 +147,13 @@ class HyperRectangularPartition:
                objective: Callable,
                contributions: torch.Tensor,
                target: float = 0.05,
-               pareto: float = 0.2,
                max_regions: int = 1000):
 
         refined_grid = HyperRectangularPartition(self._inner_partition, self._loc_shell, self._shell)
 
-        while contributions.sum() > target and contributions.size(0) < max_regions:
+        while contributions.max() > target and contributions.size(0) < max_regions:
             # Compute the threshold for the top pareto%
-            top_k = max(1, int(pareto * contributions.numel()))
-            pareto_threshold = torch.topk(contributions, top_k).values.min()
+            pareto_threshold = target
 
             mask = contributions[:-1] >= pareto_threshold
 

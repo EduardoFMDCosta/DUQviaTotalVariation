@@ -51,6 +51,7 @@ def propagate_mixture_tv_bounds(f: Dynamics,
                                                mixture=mixture_distribution,
                                                noise_distribution=noise_distribution)
 
+            # TODO: Change refinement to deal with mixture probs (see new method)
             partition = partition.refine(objective=objective,
                                          contributions=contributions,
                                          target=0.02,
