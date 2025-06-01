@@ -2,6 +2,12 @@ import torch
 import itertools
 from typing import Callable
 from itertools import product
+from enum import IntEnum
+
+class SafetyType(IntEnum):
+    AVOID = -1
+    SAFE = 0
+    REACH = 1
 
 class HyperRectangle:
     def __init__(self, lower, upper):
@@ -33,9 +39,23 @@ class HyperRectangle:
         return HyperRectangle(lower, upper)
 
 
+class AvoidHyperRectangle(HyperRectangle):
+    def __init__(self, lower, upper):
+        super().__init__(lower, upper)
+        self.state_type = torch.tensor([SafetyType.AVOID] * lower.size(0))
+
+
+class ReachHyperRectangle(HyperRectangle):
+    def __init__(self, lower, upper):
+        super().__init__(lower, upper)
+        self.state_type = torch.tensor([SafetyType.REACH] * lower.size(0))
+
+
 class HyperRectangularPartition:
     def __init__(self,
                  inner_partition: HyperRectangle,
+                 avoid_sets: AvoidHyperRectangle,
+                 reach_sets: ReachHyperRectangle,
                  loc_shell: torch.Tensor,
                  shell: torch.Tensor):
 
@@ -44,10 +64,12 @@ class HyperRectangularPartition:
         self._inner_partition = inner_partition
         self._locs_inner = inner_partition.center
         self._num_dims = loc_shell.size(-1)
+
         self._lower = self._get_lower()
         self._upper = self._get_upper()
-
         assert (self._lower <= self._upper).all()
+
+        self.safety_type = self._get_safety_type(avoid_sets, reach_sets)
 
     @property
     def num_locs(self):
@@ -146,10 +168,16 @@ class HyperRectangularPartition:
     def refine(self,
                objective: Callable,
                contributions: torch.Tensor,
+               avoid_sets: AvoidHyperRectangle,
+               reach_sets: ReachHyperRectangle,
                target: float = 0.05,
                max_regions: int = 1000):
 
-        refined_grid = HyperRectangularPartition(self._inner_partition, self._loc_shell, self._shell)
+        refined_grid = HyperRectangularPartition(inner_partition=self._inner_partition,
+                                                 avoid_sets=avoid_sets,
+                                                 reach_sets=reach_sets,
+                                                 loc_shell=self._loc_shell,
+                                                 shell=self._shell)
 
         while contributions.max() > target and contributions.size(0) < max_regions:
             # Compute the threshold for the top pareto%
@@ -158,11 +186,40 @@ class HyperRectangularPartition:
             mask = contributions[:-1] >= pareto_threshold
 
             refined_inner = self.split(refined_grid._inner_partition, mask)
-            refined_grid = HyperRectangularPartition(refined_inner, self._loc_shell, self._shell)
+            refined_grid = HyperRectangularPartition(inner_partition=refined_inner,
+                                                     avoid_sets=avoid_sets,
+                                                     reach_sets=reach_sets,
+                                                     loc_shell=self._loc_shell,
+                                                     shell=self._shell)
 
             contributions, _ = objective(refined_grid)
 
         return refined_grid
+
+    def _get_safety_type(self, avoid_sets: AvoidHyperRectangle, reach_sets: ReachHyperRectangle):
+
+        partition_lower = self.inner_partition.lower.unsqueeze(1)
+        partition_upper = self.inner_partition.upper.unsqueeze(1)
+
+        avoid_lower = avoid_sets.lower.unsqueeze(0)
+        avoid_upper = avoid_sets.upper.unsqueeze(0)
+
+        reach_lower = reach_sets.lower.unsqueeze(0)
+        reach_upper = reach_sets.upper.unsqueeze(0)
+
+        intersection_avoid = ((partition_upper > avoid_lower) & (partition_lower < avoid_upper)).all(dim=2)
+        avoid_mask = intersection_avoid.any(dim=1)
+
+        intersection_reach = ((partition_upper > reach_lower) & (partition_lower < reach_upper)).all(dim=2)
+        reach_mask = intersection_reach.any(dim=1)
+
+        safety_type = torch.full((self.inner_partition.lower.shape[0],), SafetyType.SAFE)
+        safety_type = torch.where(avoid_mask, SafetyType.AVOID, safety_type)
+        safety_type = torch.where(reach_mask, SafetyType.REACH, safety_type)
+
+        safety_type = torch.cat([safety_type, torch.tensor([SafetyType.AVOID])], dim=0)
+
+        return safety_type
 
 
 

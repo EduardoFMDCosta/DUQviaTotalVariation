@@ -85,6 +85,7 @@ def plot_partition(partition: HyperRectangularPartition):
     inner_partition = partition.inner_partition
     lower = inner_partition.lower
     upper = inner_partition.upper
+    safety_type = partition.safety_type
 
     if lower.shape[-1] == 1:
         fig, ax = plt.subplots()
@@ -101,12 +102,17 @@ def plot_partition(partition: HyperRectangularPartition):
 
     elif lower.shape[-1] == 2:
         fig, ax = plt.subplots()
+        ax.set_facecolor('lightgrey')
+
+        unique_types = np.unique(safety_type)
+        face_color = {0: 'lightgrey', -1: 'red', 1: 'green'}
+        edge_color = {0: 'grey', -1: 'red', 1: 'green'}
 
         # Loop over rectangles
-        for lo, hi in zip(lower, upper):
+        for lo, hi, t in zip(lower, upper, safety_type):
             width = hi[0] - lo[0]
             height = hi[1] - lo[1]
-            rect = patches.Rectangle(lo, width, height, linewidth=1, edgecolor='blue', facecolor='none')
+            rect = patches.Rectangle(lo, width, height, linewidth=1, edgecolor=edge_color[t.item()], facecolor=face_color[t.item()], alpha=0.5)
             ax.add_patch(rect)
 
         ax.set_aspect('equal')

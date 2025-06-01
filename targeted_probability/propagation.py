@@ -5,7 +5,7 @@ from common.propagate_mixture import propagate
 from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import LinearDynamics, factory, Dynamics, DubinsCarDynamics
 from grid.obstacles import compute_hitting_prob
-from grid.regions import HyperRectangle, HyperRectangularPartition
+from grid.regions import HyperRectangle, HyperRectangularPartition, AvoidHyperRectangle, ReachHyperRectangle
 from grid.utils import get_shell, get_shell_loc, uniform_grid
 from plotting.plotting import plot_confidence_interval, plot_partition, plot_samples
 from targeted_probability.bounds import compute_targeted_bound, TargetedBounds, get_objective_targeted
@@ -14,7 +14,8 @@ from targeted_probability.transition_kernel import bound_transition_kernel
 def propagate_mixture_targeted_bounds(f: Dynamics,
                                       initial_distribution: Union[Gaussian, GaussianMixture],
                                       noise_distribution: Gaussian,
-                                      unsafe_sets: HyperRectangle,
+                                      unsafe_sets: AvoidHyperRectangle,
+                                      reach_sets: ReachHyperRectangle,
                                       initial_grid_size: int = 10,
                                       prediction_horizon: int = 2,
                                       num_samples: int = 1000,
@@ -27,7 +28,11 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
     shell = torch.tensor([[-3, -3], [8, 8]])
     loc_shell = get_shell_loc(shell)
     inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
-    partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
+    partition = HyperRectangularPartition(inner_partition=inner_partition,
+                                          avoid_sets=unsafe_sets,
+                                          reach_sets=reach_sets,
+                                          loc_shell=loc_shell,
+                                          shell=shell)
 
     # Initialize mixture
     mixture_distribution = initial_distribution
@@ -37,6 +42,8 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
     objective = get_objective_targeted(mixture=mixture_distribution)
     partition = partition.refine(objective=objective,
                                  contributions=mixture_distribution.compute_probabilities(partition),
+                                 avoid_sets=unsafe_sets,
+                                 reach_sets=reach_sets,
                                  target=0.01,
                                  max_regions=5000)
     if True:
@@ -59,12 +66,18 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
 
         # Initialize coarse grid
         inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
-        next_partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
+        next_partition = HyperRectangularPartition(inner_partition=inner_partition,
+                                                   avoid_sets=unsafe_sets,
+                                                   reach_sets=reach_sets,
+                                                   loc_shell=loc_shell,
+                                                   shell=shell)
 
         # Refinement
         objective = get_objective_targeted(mixture=mixture_distribution)
         next_partition = next_partition.refine(objective=objective,
                                      contributions=mixture_distribution.compute_probabilities(next_partition),
+                                               avoid_sets=unsafe_sets,
+                                               reach_sets=reach_sets,
                                      target=0.01,
                                      max_regions=5000)
         if True:
@@ -136,16 +149,18 @@ if __name__ == '__main__':
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
     num_samples = 10000
-    horizon = 50
-    grid_size = 225
+    horizon = 15
+    grid_size = 1600
 
     # Define unsafe set
-    unsafe_set = HyperRectangle(torch.tensor([[3.8, 2], [2, 1]]), torch.tensor([[4.8, 3.5], [3, 2]]))
+    unsafe_set = AvoidHyperRectangle(torch.tensor([[3.8, 2], [2, 1]]), torch.tensor([[4.8, 3.5], [3, 2]]))
+    reach_set = ReachHyperRectangle(torch.tensor([[0., 0.]]), torch.tensor([[0.2, 0.2]]))
 
     mixtures, aps, lbs, ubs = propagate_mixture_targeted_bounds(f=f,
                                       initial_distribution=initial_distribution,
                                       noise_distribution=noise_distribution,
                                       unsafe_sets=unsafe_set,
+                                      reach_sets=reach_set,
                                       initial_grid_size=grid_size,
                                       prediction_horizon=horizon,
                                       num_samples=num_samples,
