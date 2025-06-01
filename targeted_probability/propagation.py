@@ -22,7 +22,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                       plot: bool = True):
 
     # Parameters
-    num_unsafe_sets = avoid_sets.lower.shape[0]
+    num_avoid_sets = avoid_sets.lower.shape[0]
 
     # Initialize coarse partition
     loc_shell = get_shell_loc(shell)
@@ -53,11 +53,11 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
 
     # Initialize bounds
     bounds_partition = TargetedBounds(torch.zeros(partition.lower.shape[0]), torch.zeros(partition.lower.shape[0]))
-    bounds_unsafe_sets = TargetedBounds(torch.zeros(num_unsafe_sets), torch.zeros(num_unsafe_sets))
+    bounds_avoid_sets = TargetedBounds(torch.zeros(num_avoid_sets), torch.zeros(num_avoid_sets))
 
     # Bound trajectories
     aps = [mixture_distribution.compute_probabilities(avoid_sets).sum()]
-    lbs, ubs = [bounds_unsafe_sets.lb_delta.sum()], [bounds_unsafe_sets.ub_delta.sum()]
+    lbs, ubs = [bounds_avoid_sets.lb_delta.sum()], [bounds_avoid_sets.ub_delta.sum()]
 
     for t in range(prediction_horizon):
 
@@ -114,6 +114,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
         ub_hitting_prob_all = bounds_unsafe_sets.ub_delta.sum()
         ubs.append(ub_hitting_prob_all)
 
+        print(f'Partition size: {partition.lower.shape[0]}')
         print(f'End of computing for t={t}')
 
     lbs, aps, ubs = torch.tensor(lbs), torch.tensor(aps), torch.tensor(ubs)
