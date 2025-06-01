@@ -3,17 +3,17 @@ from typing import Union
 from common.monte_carlo import simulate_monte_carlo, simulate_mixtures
 from common.propagate_mixture import propagate
 from distributions.distributions import Gaussian, GaussianMixture
-from dynamics.dynamics import LinearDynamics, factory, Dynamics, DubinsCarDynamics
+from dynamics.dynamics import LinearDynamics, Dynamics, DubinsCarDynamics
 from grid.obstacles import compute_hitting_prob
 from grid.regions import HyperRectangle, HyperRectangularPartition, AvoidHyperRectangle, ReachHyperRectangle
 from grid.utils import get_shell, get_shell_loc, uniform_grid
 from plotting.plotting import plot_confidence_interval, plot_partition, plot_samples
 from targeted_probability.bounds import compute_targeted_bound, TargetedBounds, get_objective_targeted
-from targeted_probability.transition_kernel import bound_transition_kernel
 
 def propagate_mixture_targeted_bounds(f: Dynamics,
                                       initial_distribution: Union[Gaussian, GaussianMixture],
                                       noise_distribution: Gaussian,
+                                      shell: torch.Tensor,
                                       avoid_sets: AvoidHyperRectangle,
                                       reach_sets: ReachHyperRectangle,
                                       initial_grid_size: int = 10,
@@ -25,7 +25,6 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
     num_unsafe_sets = avoid_sets.lower.shape[0]
 
     # Initialize coarse partition
-    shell = torch.tensor([[-3, -3], [8, 8]])
     loc_shell = get_shell_loc(shell)
     inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
     partition = HyperRectangularPartition(inner_partition=inner_partition,
@@ -148,6 +147,9 @@ if __name__ == '__main__':
     cov_noise = torch.diag(torch.Tensor([0.01, 0.01]))
     noise_distribution = Gaussian(mean_noise, cov_noise)
 
+    # Shell
+    shell = torch.tensor([[-3, -3], [8, 8]])
+
     num_samples = 10000
     horizon = 15
     grid_size = 1600
@@ -159,6 +161,7 @@ if __name__ == '__main__':
     mixtures, aps, lbs, ubs = propagate_mixture_targeted_bounds(f=f,
                                                                 initial_distribution=initial_distribution,
                                                                 noise_distribution=noise_distribution,
+                                                                shell=shell,
                                                                 avoid_sets=avoid_sets,
                                                                 reach_sets=reach_sets,
                                                                 initial_grid_size=grid_size,
