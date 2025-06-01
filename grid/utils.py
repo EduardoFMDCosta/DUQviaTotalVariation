@@ -1,18 +1,6 @@
 import torch
 import itertools
-
 from grid.regions import HyperRectangle
-
-
-def get_shell(samples: torch.Tensor, eps:float | None = None):
-
-    if eps is None: 
-        eps = 3 * torch.std(samples, dim=0)
-
-    min_point = torch.min(samples, dim=0).values - eps
-    max_point = torch.max(samples, dim=0).values + eps
-
-    return torch.stack((min_point, max_point), dim=0)
 
 def get_shell_loc(macro_region: torch.Tensor):
     dimensions = macro_region.size(1)
@@ -24,7 +12,6 @@ def get_shell_loc(macro_region: torch.Tensor):
     # Choose a point close to an arbitrary face
     outer_point = torch.where(torch.arange(dimensions) != dimensions - 1, (min_coords + max_coords) / 2, max_coords + 5.0)
     return outer_point
-
 
 def uniform_grid(lower: torch.Tensor,
                  upper: torch.Tensor,

@@ -6,7 +6,7 @@ from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import LinearDynamics, Dynamics, DubinsCarDynamics
 from grid.obstacles import compute_hitting_prob
 from grid.regions import HyperRectangle, HyperRectangularPartition, AvoidHyperRectangle, ReachHyperRectangle
-from grid.utils import get_shell, get_shell_loc, uniform_grid
+from grid.utils import get_shell_loc, uniform_grid
 from plotting.plotting import plot_confidence_interval, plot_partition, plot_samples
 from targeted_probability.bounds import compute_targeted_bound, TargetedBounds, get_objective_targeted
 
