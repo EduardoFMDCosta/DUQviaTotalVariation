@@ -16,7 +16,7 @@ plt.rcParams.update({
 
 def plot_samples(monte_carlo_samples: torch.Tensor,
                  gmm_samples: torch.Tensor,
-                 unsafe_sets: HyperRectangle = None):
+                 avoid_sets: HyperRectangle = None):
 
     if monte_carlo_samples.shape[-1] >= 2:
         assert monte_carlo_samples.shape[0] == gmm_samples.shape[0]
@@ -58,9 +58,9 @@ def plot_samples(monte_carlo_samples: torch.Tensor,
                 )
 
             # Plot unsafe sets if provided
-            if unsafe_sets is not None:
-                lower = unsafe_sets.lower.cpu().numpy()
-                upper = unsafe_sets.upper.cpu().numpy()
+            if avoid_sets is not None:
+                lower = avoid_sets.lower.cpu().numpy()
+                upper = avoid_sets.upper.cpu().numpy()
                 for l, u in zip(lower, upper):
                     width, height = u[0] - l[0], u[1] - l[1]
                     rect = patches.Rectangle((l[0], l[1]), width, height,
