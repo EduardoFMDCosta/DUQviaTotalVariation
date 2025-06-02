@@ -9,8 +9,7 @@ from targeted_probability.propagation import propagate_mixture_targeted_bounds
 
 if __name__ == '__main__':
     torch.manual_seed(0)
-
-
+    
     args = parse_arguments(
         dynamics_type="LinearDynamics",
         num_dims=2,
