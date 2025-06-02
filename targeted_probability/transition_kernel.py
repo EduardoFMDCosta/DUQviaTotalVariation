@@ -28,7 +28,9 @@ def kernel_matrix(optimal_z: torch.Tensor,
     std_devs = torch.sqrt(torch.diag(covariance))
 
     lower_std = (target.lower - optimal_z) / std_devs
+    lower_std = torch.nan_to_num(lower_std, nan=-torch.inf)
     upper_std = (target.upper - optimal_z) / std_devs
+    upper_std = torch.nan_to_num(upper_std, nan=torch.inf)
 
     # Compute Gaussian probs for each pair (\barR_from, R_target)
     lower_cdf = normal.cdf(lower_std)
