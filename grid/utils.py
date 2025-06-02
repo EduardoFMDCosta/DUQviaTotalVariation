@@ -15,11 +15,11 @@ def get_shell_loc(macro_region: torch.Tensor):
 
 def uniform_grid(lower: torch.Tensor,
                  upper: torch.Tensor,
-                 n: int):
+                 grid_size: int):
 
     d = lower.shape[0]
-    k = int(round(n ** (1 / d)))
-    assert k ** d == n, "n must be a perfect power of the number of dimensions"
+    k = int(round(grid_size ** (1 / d)))
+    assert k ** d == grid_size, "grid_size must be a perfect power of the number of dimensions"
 
     # Generate grid split points per dimension
     grids = [torch.linspace(lower[i], upper[i], steps=k + 1) for i in range(d)]

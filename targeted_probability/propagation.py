@@ -14,10 +14,11 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                       shell: torch.Tensor,
                                       avoid_sets: AvoidHyperRectangle,
                                       reach_sets: ReachHyperRectangle,
-                                      initial_grid_size: int = 10,
+                                      grid_size: int = 10,
                                       prediction_horizon: int = 2,
                                       num_samples: int = 1000,
-                                      plot: bool = True):
+                                      plot: bool = True,
+                                      **kwargs):
 
     # Parameters
     num_avoid_sets = avoid_sets.lower.shape[0]
@@ -25,7 +26,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
 
     # Initialize coarse partition
     loc_shell = get_shell_loc(shell)
-    inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
+    inner_partition = uniform_grid(shell[0], shell[1], grid_size)
     partition = HyperRectangularPartition(inner_partition=inner_partition,
                                           avoid_sets=avoid_sets,
                                           reach_sets=reach_sets,
@@ -67,7 +68,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
         mixture_distribution = propagate(f, probs, partition.locs, noise_distribution)
 
         # Initialize coarse grid
-        inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
+        inner_partition = uniform_grid(shell[0], shell[1], grid_size)
         next_partition = HyperRectangularPartition(inner_partition=inner_partition,
                                                    avoid_sets=avoid_sets,
                                                    reach_sets=reach_sets,

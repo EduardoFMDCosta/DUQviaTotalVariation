@@ -8,7 +8,8 @@ def simulate_monte_carlo(f: Dynamics,
                 initial_distribution: Union[Gaussian, GaussianMixture],
                 noise_distribution: Gaussian,
                 prediction_horizon: int,
-                num_samples: int):
+                num_samples: int,
+                **kwargs):
 
     samples = initial_distribution(num_samples)
 
@@ -24,7 +25,8 @@ def simulate_monte_carlo(f: Dynamics,
 
 
 def simulate_mixtures(mixtures: list,
-                      num_samples: int):
+                      num_samples: int,
+                      **kwargs):
 
     gmm_samples = []
 
