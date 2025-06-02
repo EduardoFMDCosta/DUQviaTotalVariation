@@ -33,11 +33,11 @@ if __name__ == '__main__':
     shell = torch.tensor([[-3, -3], [8, 8]])
 
     num_samples = 10000
-    horizon = 30
+    horizon = 10
     grid_size = 1600
 
     # Define unsafe set
-    avoid_sets = AvoidHyperRectangle(torch.tensor([[4.5, 2], [0.0, 2.0]]), torch.tensor([[5.5, 3.5], [1.0, 2.5]]))
+    avoid_sets = AvoidHyperRectangle(torch.tensor([[4.5, 2]]), torch.tensor([[5.5, 3.5]]))
     reach_sets = ReachHyperRectangle(torch.tensor([[0.2, 0.2]]), torch.tensor([[1.2, 1.2]]))
 
     mixtures, aps_avoid, lbs_avoid, ubs_avoid, aps_reach, lbs_reach, ubs_reach = propagate_mixture_targeted_bounds(f=f,
@@ -49,7 +49,7 @@ if __name__ == '__main__':
                                                                 initial_grid_size=grid_size,
                                                                 prediction_horizon=horizon,
                                                                 num_samples=num_samples,
-                                                                plot= True)
+                                                                plot= False)
 
     monte_carlo_samples = simulate_monte_carlo(f=f,
                                                initial_distribution=initial_distribution,
@@ -72,4 +72,5 @@ if __name__ == '__main__':
 
     plot_samples(monte_carlo_samples=monte_carlo_samples,
                  gmm_samples=gmm_samples,
-                 avoid_sets=avoid_sets)
+                 avoid_sets=avoid_sets, 
+                 reach_sets=reach_sets)

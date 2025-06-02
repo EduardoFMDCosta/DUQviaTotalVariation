@@ -16,7 +16,8 @@ plt.rcParams.update({
 
 def plot_samples(monte_carlo_samples: torch.Tensor,
                  gmm_samples: torch.Tensor,
-                 avoid_sets: HyperRectangle = None):
+                 avoid_sets: HyperRectangle = None,
+                 reach_sets: HyperRectangle = None):
 
     if monte_carlo_samples.shape[-1] >= 2:
         assert monte_carlo_samples.shape[0] == gmm_samples.shape[0]
@@ -67,6 +68,19 @@ def plot_samples(monte_carlo_samples: torch.Tensor,
                                              linewidth=1.5,
                                              edgecolor='r',
                                              facecolor='red',
+                                             alpha=0.4)
+                    ax.add_patch(rect)
+
+            # Plot reach sets if provided
+            if reach_sets is not None:
+                lower = reach_sets.lower.cpu().numpy()
+                upper = reach_sets.upper.cpu().numpy()
+                for l, u in zip(lower, upper):
+                    width, height = u[0] - l[0], u[1] - l[1]
+                    rect = patches.Rectangle((l[0], l[1]), width, height,
+                                             linewidth=1.5,
+                                             edgecolor='g',
+                                             facecolor='green',
                                              alpha=0.4)
                     ax.add_patch(rect)
 
