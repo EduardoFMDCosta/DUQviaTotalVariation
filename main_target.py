@@ -9,7 +9,7 @@ from targeted_probability.propagation import propagate_mixture_targeted_bounds
 
 if __name__ == '__main__':
     torch.manual_seed(0)
-
+    
     args = parse_arguments(
         dynamics_type="LinearDynamics",
         num_dims=2,
@@ -57,4 +57,5 @@ if __name__ == '__main__':
 
     plot_samples(monte_carlo_samples=monte_carlo_samples,
                  gmm_samples=gmm_samples,
-                 avoid_sets=avoid_sets)
+                 avoid_sets=avoid_sets, 
+                 reach_sets=reach_sets)
