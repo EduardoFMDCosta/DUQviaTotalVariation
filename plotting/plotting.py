@@ -30,9 +30,9 @@ def plot_samples(monte_carlo_samples: torch.Tensor,
         samples_list = [monte_carlo_samples, gmm_samples]
 
         # Compute global bounds for consistent axis limits and binning
-        all_samples = torch.cat([monte_carlo_samples, gmm_samples], dim=0).cpu().numpy()
-        xmin, xmax = all_samples[:, 0].min(), all_samples[:, 0].max()
-        ymin, ymax = all_samples[:, 1].min(), all_samples[:, 1].max()
+        all_samples = torch.cat([monte_carlo_samples, gmm_samples], dim=1).cpu().numpy()
+        xmin, xmax = all_samples[:, :, 0].min(), all_samples[:, :, 0].max()
+        ymin, ymax = all_samples[:, :, 1].min(), all_samples[:, :, 1].max()
 
         # Define bin edges (you can customize bin count)
         bins = 100
