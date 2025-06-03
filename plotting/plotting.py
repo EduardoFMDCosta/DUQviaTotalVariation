@@ -5,6 +5,7 @@ from grid.regions import HyperRectangularPartition, HyperRectangle
 import matplotlib.patches as patches
 import matplotlib.cm as cm
 import numpy.ma as ma
+from matplotlib.colors import ListedColormap
 
 plt.style.use('seaborn-v0_8-bright')
 
@@ -39,6 +40,8 @@ def plot_samples(monte_carlo_samples: torch.Tensor,
         x_edges = np.linspace(xmin, xmax, bins + 1)
         y_edges = np.linspace(ymin, ymax, bins + 1)
 
+        cmap = cm.get_cmap("viridis", T)  # or any sequential colormap
+
         for ax, samples, title in zip(axes, samples_list, titles):
             for t in range(T):
                 data = samples[t].cpu().numpy()
@@ -57,6 +60,15 @@ def plot_samples(monte_carlo_samples: torch.Tensor,
                     cmap=cm.viridis,
                     alpha=0.7,  # transparency per time step
                 )
+                color = cmap(t / (T - 1))  # returns RGBA
+                ax.imshow(
+                    np.ones_like(H_masked),
+                    extent=[xmin, xmax, ymin, ymax],
+                    origin='lower',
+                    cmap=ListedColormap([color]),
+                    alpha=0.5 * (H_masked > 0),
+                )
+
 
             # Plot unsafe sets if provided
             if avoid_sets is not None:
