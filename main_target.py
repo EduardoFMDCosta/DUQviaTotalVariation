@@ -53,11 +53,11 @@ if __name__ == '__main__':
 
     hitting_probs_mc = compute_hitting_prob(samples=monte_carlo_samples,
                                             avoid_sets=avoid_sets)
-    plot_confidence_interval(aps_avoid, lbs_avoid, ubs_avoid, hitting_probs_mc)
+    plot_confidence_interval(aps_avoid, lbs_avoid, ubs_avoid, hitting_probs_mc, save="confidence_avoid")
 
     reach_probs_mc = compute_hitting_prob(samples=monte_carlo_samples,
                                           avoid_sets=reach_sets)
-    plot_confidence_interval(aps_reach, lbs_reach, ubs_reach, reach_probs_mc)
+    plot_confidence_interval(aps_reach, lbs_reach, ubs_reach, reach_probs_mc, save="confidence_reach")
 
     gmm_samples = simulate_mixtures(mixtures=mixtures,
                                     **params)
@@ -67,4 +67,5 @@ if __name__ == '__main__':
     plot_samples(monte_carlo_samples=monte_carlo_samples,
                  gmm_samples=gmm_samples,
                  avoid_sets=avoid_sets, 
-                 reach_sets=reach_sets)
+                 reach_sets=reach_sets, 
+                 save="plot_samples")

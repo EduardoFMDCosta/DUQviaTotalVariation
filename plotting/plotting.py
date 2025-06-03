@@ -7,18 +7,20 @@ import matplotlib.cm as cm
 import numpy.ma as ma
 from matplotlib.colors import ListedColormap
 
+
 plt.style.use('seaborn-v0_8-bright')
 
-plt.rcParams.update({
-    'font.size': 12,
-    'text.usetex': True,
-    'text.latex.preamble': r'\usepackage{amsfonts}'
-})
+# plt.rcParams.update({
+#     'font.size': 12,
+#     'text.usetex': True,
+#     'text.latex.preamble': r'\usepackage{amsfonts}'
+# })
 
 def plot_samples(monte_carlo_samples: torch.Tensor,
                  gmm_samples: torch.Tensor,
                  avoid_sets: HyperRectangle = None,
-                 reach_sets: HyperRectangle = None):
+                 reach_sets: HyperRectangle = None, 
+                 save: str = None):
 
     if monte_carlo_samples.shape[-1] >= 2:
         assert monte_carlo_samples.shape[0] == gmm_samples.shape[0]
@@ -104,7 +106,12 @@ def plot_samples(monte_carlo_samples: torch.Tensor,
             ax.set_aspect('equal')
 
         plt.tight_layout()
-        plt.show()
+        if save: 
+            filename = "figures/" + save + ".png"
+            plt.savefig(filename)
+            plt.clf()
+        else:
+            plt.show()
 
 def plot_partition(partition: HyperRectangularPartition):
 
@@ -153,7 +160,8 @@ def plot_partition(partition: HyperRectangularPartition):
 def plot_confidence_interval(gmm_prob_set: torch.Tensor,
                              alpha_set: torch.Tensor,
                              beta_set: torch.Tensor,
-                             actual_set_prob: torch.Tensor = None):
+                             actual_set_prob: torch.Tensor = None, 
+                             save: str = None):
 
     t = torch.arange(len(gmm_prob_set))
     lbs = gmm_prob_set + alpha_set
@@ -175,4 +183,9 @@ def plot_confidence_interval(gmm_prob_set: torch.Tensor,
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.2)  # Increase bottom margin
 
-    plt.show()
+    if save: 
+        filename = filename = "figures/" + save + ".png"
+        plt.savefig(filename)
+        plt.clf()
+    else:
+        plt.show()
