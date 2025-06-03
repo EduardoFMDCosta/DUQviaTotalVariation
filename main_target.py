@@ -10,15 +10,24 @@ from targeted_probability.propagation import propagate_mixture_targeted_bounds
 if __name__ == '__main__':
     torch.manual_seed(0)
     
+    # args = parse_arguments(
+    #     dynamics_type="DubinsCarDynamics",
+    #     num_dims=3,
+    #     dynamics_setting=0,
+    #     prediction_horizon=15,
+    #     num_samples=5000, 
+    #     plot=False
+    # )
     args = parse_arguments(
         dynamics_type="LinearDynamics",
         num_dims=2,
         dynamics_setting=0,
-        prediction_horizon=30,
+        prediction_horizon=10,
         num_samples=5000,
-        plot=True
+        plot=False
     )
     params = load_params(args)
+
 
     dynamics = get_dynamics(**params)
     initial_distribution = get_initial_dist(**params)
@@ -30,12 +39,12 @@ if __name__ == '__main__':
     reach_sets = get_reach_sets(**params)
 
     mixtures, aps_avoid, lbs_avoid, ubs_avoid, aps_reach, lbs_reach, ubs_reach = propagate_mixture_targeted_bounds(f=dynamics,
-                                                                initial_distribution=initial_distribution,
-                                                                noise_distribution=noise_distribution,
-                                                                shell=shell,
-                                                                avoid_sets=avoid_sets,
-                                                                reach_sets=reach_sets,
-                                                                **params)
+                                      initial_distribution=initial_distribution,
+                                      noise_distribution=noise_distribution,
+                                      shell=shell,
+                                      avoid_sets=avoid_sets,
+                                      reach_sets=reach_sets,
+                                      **params)
 
     monte_carlo_samples = simulate_monte_carlo(f=dynamics,
                                                initial_distribution=initial_distribution,
