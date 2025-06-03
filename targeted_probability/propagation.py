@@ -5,7 +5,7 @@ from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangularPartition, AvoidHyperRectangle, ReachHyperRectangle
 from grid.utils import get_shell_loc, uniform_grid
-from plotting.plotting import plot_partition
+from plotting.plotting import plot_partition, plot_partition_bounds
 from targeted_probability.bounds import compute_targeted_bound, TargetedBounds, get_objective_targeted
 
 def propagate_mixture_targeted_bounds(f: Dynamics,
@@ -112,6 +112,8 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                                                            partition=partition,
                                                                            bounds_partition=bounds_partition,
                                                                            target=next_partition)
+        if plot:
+            plot_partition_bounds(next_partition, bounds_partition)
 
         # Update partition
         partition = next_partition

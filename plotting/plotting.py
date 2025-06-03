@@ -4,8 +4,11 @@ import matplotlib.pyplot as plt
 from grid.regions import HyperRectangularPartition, HyperRectangle
 import matplotlib.patches as patches
 import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 import numpy.ma as ma
 from matplotlib.colors import ListedColormap
+
+from targeted_probability.bounds import TargetedBounds
 
 plt.style.use('seaborn-v0_8-bright')
 
@@ -148,6 +151,51 @@ def plot_partition(partition: HyperRectangularPartition):
         plt.ylabel(r"$x_2$")
 
         plt.tight_layout()
+        plt.show()
+
+def plot_partition_bounds(partition: HyperRectangularPartition,
+                          bounds: TargetedBounds):
+
+    inner_partition = partition.inner_partition
+    lower = inner_partition.lower
+    upper = inner_partition.upper
+
+    lb_delta = bounds.lb_delta.detach().cpu().numpy()
+    ub_delta = bounds.ub_delta.detach().cpu().numpy()
+    labels = [r'$\check \Delta(\mathcal{R})$', r'$\hat \Delta(\mathcal{R})$']
+
+    if lower.shape[-1] == 2:
+        fig, axs = plt.subplots(1, 2, figsize=(12, 6), constrained_layout=True)
+
+        norm = mcolors.Normalize(vmin=0.0, vmax=1.0)
+        cmap = cm.viridis  # Choose any matplotlib colormap
+
+        # Loop over rectangles
+        for ax, bound, title in zip(axs, [lb_delta, ub_delta], labels):
+            for lo, hi, val in zip(lower, upper, bound):
+                width = hi[0] - lo[0]
+                height = hi[1] - lo[1]
+                color = cmap(norm(val))
+                rect = patches.Rectangle(lo, width, height,
+                                         linewidth=1,
+                                         edgecolor='black',
+                                         facecolor=color,
+                                         alpha=0.7)
+                ax.add_patch(rect)
+
+            ax.set_aspect('equal')
+            ax.set_xlim(lower[:, 0].min() - 0.5, upper[:, 0].max() + 0.5)
+            ax.set_ylim(lower[:, 1].min() - 0.5, upper[:, 1].max() + 0.5)
+            ax.set_xlabel(r"$x_1$")
+            ax.set_ylabel(r"$x_2$")
+            ax.set_title(title)
+
+            # Shared colorbar
+        sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=axs, orientation='vertical', fraction=0.05, pad=0.02)
+        cbar.set_label("Value", rotation=270, labelpad=15)
+
         plt.show()
 
 def plot_confidence_interval(gmm_prob_set: torch.Tensor,
