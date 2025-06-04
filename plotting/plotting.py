@@ -7,16 +7,15 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import numpy.ma as ma
 from matplotlib.colors import ListedColormap
-
 from targeted_probability.bounds import TargetedBounds
 
 plt.style.use('seaborn-v0_8-bright')
 
-# plt.rcParams.update({
-#     'font.size': 12,
-#     'text.usetex': True,
-#     'text.latex.preamble': r'\usepackage{amsfonts}'
-# })
+plt.rcParams.update({
+    'font.size': 12,
+    'text.usetex': True,
+    'text.latex.preamble': r'\usepackage{amsfonts}'
+})
 
 def plot_samples(monte_carlo_samples: torch.Tensor,
                  gmm_samples: torch.Tensor,
@@ -115,7 +114,8 @@ def plot_samples(monte_carlo_samples: torch.Tensor,
         else:
             plt.show()
 
-def plot_partition(partition: HyperRectangularPartition):
+def plot_partition(partition: HyperRectangularPartition,
+                   high_prob_set: HyperRectangle):
 
     inner_partition = partition.inner_partition
     lower = inner_partition.lower
@@ -150,6 +150,19 @@ def plot_partition(partition: HyperRectangularPartition):
             rect = patches.Rectangle(lo, width, height, linewidth=1, edgecolor=edge_color[t.item()], facecolor=face_color[t.item()], alpha=0.5)
             ax.add_patch(rect)
 
+        # --- Add high probability rectangles ---
+        hp_lower = high_prob_set.lower
+        hp_upper = high_prob_set.upper
+
+        # Handle multiple high-probability rectangles
+        for lo, hi in zip(hp_lower, hp_upper):
+            width = hi[0] - lo[0]
+            height = hi[1] - lo[1]
+            rect = patches.Rectangle(lo, width, height, linewidth=2,
+                                     edgecolor='black', facecolor='none',
+                                     linestyle='-')
+            ax.add_patch(rect)
+
         ax.set_aspect('equal')
         ax.set_xlim(lower[:, 0].min() - 0.5, upper[:, 0].max() + 0.5)
         ax.set_ylim(lower[:, 1].min() - 0.5, upper[:, 1].max() + 0.5)
@@ -173,7 +186,7 @@ def plot_partition_bounds(partition: HyperRectangularPartition,
     if lower.shape[-1] == 2:
         fig, axs = plt.subplots(1, 2, figsize=(12, 6), constrained_layout=True)
 
-        norm = mcolors.Normalize(vmin=0.0, vmax=1.0)
+        norm = mcolors.Normalize(vmin=-1.0, vmax=1.0)
         cmap = cm.viridis  # Choose any matplotlib colormap
 
         # Loop over rectangles

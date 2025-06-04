@@ -4,7 +4,7 @@ from common.propagate_mixture import propagate
 from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangularPartition, AvoidHyperRectangle, ReachHyperRectangle
-from grid.utils import get_shell_loc, uniform_grid
+from grid.utils import get_shell_loc, uniform_grid, get_high_prob_set, propagate_high_prob_set
 from plotting.plotting import plot_partition, plot_partition_bounds
 from targeted_probability.bounds import compute_targeted_bound, TargetedBounds, get_objective_targeted
 
@@ -37,6 +37,10 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
     mixture_distribution = initial_distribution
     mixtures = [mixture_distribution]
 
+    # High probability set
+    hpr = get_high_prob_set(mixture_distribution)
+    prob_hpr = mixture_distribution.compute_probabilities(hpr)
+
     # Refine initial partition
     objective = get_objective_targeted(mixture=mixture_distribution)
     partition = partition.refine(objective=objective,
@@ -46,7 +50,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                  target=0.01,
                                  max_regions=5000)
     if plot:
-        plot_partition(partition)
+        plot_partition(partition=partition, high_prob_set=hpr)
 
     # Compute mixture weights
     probs = mixture_distribution.compute_probabilities(partition)
@@ -67,6 +71,10 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
 
         mixture_distribution = propagate(f, probs, partition.locs, noise_distribution)
 
+        hpr = propagate_high_prob_set(f=f, hpr=hpr, noise_distribution=noise_distribution)
+        prob_hpr = prob_hpr * 0.998
+        print(prob_hpr)
+
         # Initialize coarse grid
         inner_partition = uniform_grid(shell[0], shell[1], grid_size)
         next_partition = HyperRectangularPartition(inner_partition=inner_partition,
@@ -84,7 +92,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                      target=0.01,
                                      max_regions=5000)
         if plot:
-            plot_partition(next_partition)
+            plot_partition(partition=next_partition, high_prob_set=hpr)
 
         mixtures.append(mixture_distribution)
         samples = mixture_distribution(num_samples)
