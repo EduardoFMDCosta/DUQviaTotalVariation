@@ -173,7 +173,7 @@ def plot_partition_bounds(partition: HyperRectangularPartition,
     if lower.shape[-1] == 2:
         fig, axs = plt.subplots(1, 2, figsize=(12, 6), constrained_layout=True)
 
-        norm = mcolors.Normalize(vmin=0.0, vmax=1.0)
+        norm = mcolors.Normalize(vmin=-1.0, vmax=1.0)
         cmap = cm.viridis  # Choose any matplotlib colormap
 
         # Loop over rectangles
