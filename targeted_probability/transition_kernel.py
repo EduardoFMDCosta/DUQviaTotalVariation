@@ -1,6 +1,6 @@
 from typing import Union
 import torch
-from distributions.utils import gaussian_probabilities
+from distributions.distributions import gaussian_probabilities
 from dynamics.dynamics import Dynamics, factory
 from grid.regions import HyperRectangularPartition, HyperRectangle
 import bound_propagation as bp
