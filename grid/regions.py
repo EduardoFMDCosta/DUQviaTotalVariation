@@ -33,6 +33,18 @@ class HyperRectangle:
     def get_vertices(self):
         return torch.tensor(list(itertools.product(*zip(self.lower, self.upper))))
 
+    def intersect(self, sets):
+        reference_lower = self.lower.unsqueeze(1)
+        reference_upper = self.upper.unsqueeze(1)
+
+        lower = sets.lower.unsqueeze(0)
+        upper = sets.upper.unsqueeze(0)
+
+        intersection = ((reference_upper > lower) & (reference_lower < upper)).all(dim=2)
+        intersection_mask = intersection.any(dim=1)
+
+        return intersection_mask
+
     @staticmethod
     def from_eps(x, eps):
         lower, upper = x - eps, x + eps
@@ -198,20 +210,8 @@ class HyperRectangularPartition:
 
     def _get_safety_type(self, avoid_sets: AvoidHyperRectangle, reach_sets: ReachHyperRectangle):
 
-        partition_lower = self.inner_partition.lower.unsqueeze(1)
-        partition_upper = self.inner_partition.upper.unsqueeze(1)
-
-        avoid_lower = avoid_sets.lower.unsqueeze(0)
-        avoid_upper = avoid_sets.upper.unsqueeze(0)
-
-        reach_lower = reach_sets.lower.unsqueeze(0)
-        reach_upper = reach_sets.upper.unsqueeze(0)
-
-        intersection_avoid = ((partition_upper > avoid_lower) & (partition_lower < avoid_upper)).all(dim=2)
-        avoid_mask = intersection_avoid.any(dim=1)
-
-        intersection_reach = ((partition_upper > reach_lower) & (partition_lower < reach_upper)).all(dim=2)
-        reach_mask = intersection_reach.any(dim=1)
+        avoid_mask = self.inner_partition.intersect(avoid_sets)
+        reach_mask = self.inner_partition.intersect(reach_sets)
 
         safety_type = torch.full((self.inner_partition.lower.shape[0],), SafetyType.SAFE)
         safety_type = torch.where(avoid_mask, SafetyType.AVOID, safety_type)
