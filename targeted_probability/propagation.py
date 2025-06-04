@@ -113,8 +113,6 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                                                            partition=partition,
                                                                            bounds_partition=bounds_partition,
                                                                            target=next_partition)
-        if plot:
-            plot_partition_bounds(next_partition, bounds_partition)
 
         # Update partition
         partition = next_partition
