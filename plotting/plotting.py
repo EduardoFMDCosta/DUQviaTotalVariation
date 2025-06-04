@@ -115,7 +115,8 @@ def plot_samples(monte_carlo_samples: torch.Tensor,
         else:
             plt.show()
 
-def plot_partition(partition: HyperRectangularPartition):
+def plot_partition(partition: HyperRectangularPartition,
+                   high_prob_set: HyperRectangle = None):
 
     inner_partition = partition.inner_partition
     lower = inner_partition.lower
@@ -149,6 +150,20 @@ def plot_partition(partition: HyperRectangularPartition):
             height = hi[1] - lo[1]
             rect = patches.Rectangle(lo, width, height, linewidth=1, edgecolor=edge_color[t.item()], facecolor=face_color[t.item()], alpha=0.5)
             ax.add_patch(rect)
+
+        if high_prob_set is not None:
+            # --- Add high probability rectangles ---
+            hp_lower = high_prob_set.lower
+            hp_upper = high_prob_set.upper
+
+            # Handle multiple high-probability rectangles
+            for lo, hi in zip(hp_lower, hp_upper):
+                width = hi[0] - lo[0]
+                height = hi[1] - lo[1]
+                rect = patches.Rectangle(lo, width, height, linewidth=2,
+                                         edgecolor='black', facecolor='none',
+                                         linestyle='-')
+                ax.add_patch(rect)
 
         ax.set_aspect('equal')
         ax.set_xlim(lower[:, 0].min() - 0.5, upper[:, 0].max() + 0.5)
