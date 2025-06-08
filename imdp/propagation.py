@@ -49,7 +49,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
                                  target=0.01,
                                  max_regions=5000)
     if plot:
-        plot_partition(partition=partition, high_prob_set=hpr)
+        plot_partition(partition=partition, avoid_sets=avoid_sets, reach_sets=reach_sets, high_prob_set=hpr)
 
     # Compute mixture weights
     probs = mixture_distribution.compute_probabilities(partition)
@@ -120,7 +120,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
         # Update high probability set
         hpr = propagate_high_prob_set(f=f, hpr=hpr, noise_distribution=noise_distribution)
         if plot:
-            plot_partition(partition=partition, high_prob_set=hpr)
+            plot_partition(partition=partition, avoid_sets=avoid_sets, reach_sets=reach_sets, high_prob_set=hpr)
             plot_partition_bounds(partition, bounds_partition)
 
         # Update weights
