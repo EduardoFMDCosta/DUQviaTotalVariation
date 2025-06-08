@@ -2,7 +2,9 @@ import torch
 import itertools
 import bound_propagation as bp
 from grid.regions import HyperRectangle
-from dynamics.dynamics import Dynamics, factory
+from dynamics.dynamics import Dynamics
+
+from interval_bp import factory
 
 def get_shell_loc(macro_region: torch.Tensor):
     dimensions = macro_region.size(1)
