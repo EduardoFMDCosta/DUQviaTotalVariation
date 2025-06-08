@@ -1,24 +1,25 @@
 import torch
 from typing import Union
-from common.propagate_mixture import propagate
+from common.bounds import Bounds, ConfidenceInterval
+from common.propagate_mixture import propagate_mixture
 from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangularPartition, AvoidHyperRectangle, ReachHyperRectangle
 from grid.utils import get_shell_loc, uniform_grid, get_high_prob_set, propagate_high_prob_set
 from plotting.plotting import plot_partition, plot_partition_bounds
-from imdp.bounds import compute_targeted_bound, TargetedBounds, get_objective_targeted
+from imdp.bounds import compute_targeted_bound, get_objective_targeted
 
-def propagate_mixture_targeted_bounds(f: Dynamics,
-                                      initial_distribution: Union[Gaussian, GaussianMixture],
-                                      noise_distribution: Gaussian,
-                                      shell: torch.Tensor,
-                                      avoid_sets: AvoidHyperRectangle,
-                                      reach_sets: ReachHyperRectangle,
-                                      grid_size: int = 10,
-                                      prediction_horizon: int = 2,
-                                      num_samples: int = 1000,
-                                      plot: bool = True,
-                                      **kwargs):
+def propagate_imdp(f: Dynamics,
+                   initial_distribution: Union[Gaussian, GaussianMixture],
+                   noise_distribution: Gaussian,
+                   shell: torch.Tensor,
+                   avoid_sets: AvoidHyperRectangle,
+                   reach_sets: ReachHyperRectangle,
+                   grid_size: int = 10,
+                   prediction_horizon: int = 2,
+                   num_samples: int = 1000,
+                   plot: bool = True,
+                   **kwargs):
 
     # Parameters
     num_avoid_sets = avoid_sets.lower.shape[0]
@@ -55,9 +56,9 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
     probs = mixture_distribution.compute_probabilities(partition)
 
     # Initialize bounds
-    bounds_partition = TargetedBounds(torch.zeros(partition.lower.shape[0]), torch.zeros(partition.lower.shape[0]))
-    bounds_avoid_sets = TargetedBounds(torch.zeros(num_avoid_sets), torch.zeros(num_avoid_sets))
-    bounds_reach_sets = TargetedBounds(torch.zeros(num_reach_sets), torch.zeros(num_reach_sets))
+    bounds_partition = Bounds(torch.zeros(partition.lower.shape[0]), torch.zeros(partition.lower.shape[0]))
+    bounds_avoid_sets = Bounds(torch.zeros(num_avoid_sets), torch.zeros(num_avoid_sets))
+    bounds_reach_sets = Bounds(torch.zeros(num_reach_sets), torch.zeros(num_reach_sets))
 
     # Bound trajectories
     aps_avoid = [mixture_distribution.compute_probabilities(avoid_sets).sum()]
@@ -68,7 +69,7 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
 
     for t in range(prediction_horizon):
 
-        mixture_distribution = propagate(f, probs, partition.locs, noise_distribution)
+        mixture_distribution = propagate_mixture(f, probs, partition.locs, noise_distribution)
 
         # Initialize coarse grid
         inner_partition = uniform_grid(shell[0], shell[1], grid_size)
@@ -145,4 +146,4 @@ def propagate_mixture_targeted_bounds(f: Dynamics,
     lbs_reach = torch.maximum(lbs_reach, -aps_reach)
     ubs_reach = torch.minimum(ubs_reach, 1-aps_reach)
 
-    return mixtures, aps_avoid, lbs_avoid, ubs_avoid, aps_reach, lbs_reach, ubs_reach
+    return mixtures, ConfidenceInterval(aps_avoid, Bounds(lbs_avoid, ubs_avoid)), ConfidenceInterval(aps_reach, Bounds(lbs_reach, ubs_reach))

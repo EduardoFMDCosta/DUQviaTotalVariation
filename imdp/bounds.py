@@ -1,5 +1,6 @@
 import torch
 from typing import Union
+from common.bounds import Bounds
 from distributions.distributions import GaussianMixture, Gaussian
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangle, HyperRectangularPartition
@@ -8,19 +9,11 @@ from imdp.utils import o_maximization
 
 PRECISION = torch.finfo(torch.float32).eps
 
-class TargetedBounds:
-    def __init__(self,
-                 lb_delta: torch.Tensor,
-                 ub_delta: torch.Tensor):
-
-        self.lb_delta = lb_delta
-        self.ub_delta = ub_delta
-
 def compute_targeted_bound(f: Dynamics,
                            partition_probs: torch.Tensor,
                            noise_distribution: Gaussian,
                            partition: HyperRectangularPartition,
-                           bounds_partition: TargetedBounds,
+                           bounds_partition: Bounds,
                            target: Union[HyperRectangle, HyperRectangularPartition]):
 
     num_target_sets = target.lower.shape[0]
@@ -49,7 +42,7 @@ def compute_targeted_bound(f: Dynamics,
     assert (ub_delta >= -10*PRECISION).all(), 'Upper bound cannot be negative'
 
     contributions = ub_delta_components.sum(dim=1)
-    bounds = TargetedBounds(lb_delta, ub_delta)
+    bounds = Bounds(lb_delta, ub_delta)
 
     return contributions, bounds
 

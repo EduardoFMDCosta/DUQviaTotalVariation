@@ -1,13 +1,14 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+
+from common.bounds import ConfidenceInterval, Bounds
 from grid.regions import HyperRectangularPartition, HyperRectangle, AvoidHyperRectangle, ReachHyperRectangle
 import matplotlib.patches as patches
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import numpy.ma as ma
 from matplotlib.colors import ListedColormap
-from imdp.bounds import TargetedBounds
 
 plt.style.use('seaborn-v0_8-bright')
 
@@ -197,7 +198,7 @@ def plot_partition(partition: HyperRectangularPartition,
         plt.show()
 
 def plot_partition_bounds(partition: HyperRectangularPartition,
-                          bounds: TargetedBounds):
+                          bounds: Bounds):
 
     inner_partition = partition.inner_partition
     lower = inner_partition.lower
@@ -241,21 +242,19 @@ def plot_partition_bounds(partition: HyperRectangularPartition,
 
         plt.show()
 
-def plot_confidence_interval(gmm_prob_set: torch.Tensor,
-                             alpha_set: torch.Tensor,
-                             beta_set: torch.Tensor,
+def plot_confidence_interval(conf_interval: ConfidenceInterval,
                              actual_set_prob: torch.Tensor = None,
                              save: str = None):
 
-    t = torch.arange(len(gmm_prob_set))
-    lbs = gmm_prob_set + alpha_set
-    ubs = gmm_prob_set + beta_set
+    t = torch.arange(len(conf_interval.reference))
+    lbs = conf_interval.reference + conf_interval.lb
+    ubs = conf_interval.reference + conf_interval.ub
 
     plt.plot(t, lbs, linestyle='--', marker='s', color='grey')
     plt.plot(t, ubs, linestyle='--', marker='s', color='grey')
     plt.fill_between(t, lbs, ubs, color="lightgrey", label = r'Bounds')
 
-    plt.plot(t, gmm_prob_set, label=r'$\hat{\mathbb{P}}_{x_t}(U)$', linestyle='-', marker='s', color='red')
+    plt.plot(t, conf_interval.reference, label=r'$\hat{\mathbb{P}}_{x_t}(U)$', linestyle='-', marker='s', color='red')
     if actual_set_prob is not None:
         plt.plot(t, actual_set_prob, label=r'$\mathbb{P}_{x_t}(U)$', linestyle='-', marker='s', color='green')
 
