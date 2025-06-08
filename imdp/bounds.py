@@ -24,7 +24,7 @@ def compute_targeted_bound(f: Dynamics,
                            target: Union[HyperRectangle, HyperRectangularPartition]):
 
     num_target_sets = target.lower.shape[0]
-    cov_noise = noise_distribution.covariance
+    cov_noise = noise_distribution.covariance_matrix
 
     # Compute alpha and beta for target
     inf_kernel_target = bound_transition_kernel(f, cov_noise, partition, target, supremum=False)
