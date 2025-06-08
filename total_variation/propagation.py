@@ -1,5 +1,6 @@
 import torch
 from typing import Union
+from itertools import accumulate
 from common.bounds import Bounds, ConfidenceInterval
 from common.propagate_mixture import propagate_mixture
 from distributions.distributions import Gaussian, GaussianMixture
@@ -115,14 +116,20 @@ def propagate_tv(f: Dynamics,
         print(f'Partition size: {partition.lower.shape[0]}')
         print(f'End of computing for t={t}')
 
+
+    # Make bound cumulative
+    lbs_avoid, ubs_avoid = list(accumulate(lbs_avoid)), list(accumulate(ubs_avoid))
+    lbs_reach, ubs_reach = list(accumulate(lbs_reach)), list(accumulate(ubs_reach))
+
+    # Convert to tensor
     lbs_avoid, aps_avoid, ubs_avoid = torch.tensor(lbs_avoid), torch.tensor(aps_avoid), torch.tensor(ubs_avoid)
     lbs_reach, aps_reach, ubs_reach = torch.tensor(lbs_reach), torch.tensor(aps_reach), torch.tensor(ubs_reach)
 
     # Clamping for valid probability bounds
-    lbs_avoid = torch.maximum(lbs_avoid, -aps_avoid)
-    ubs_avoid = torch.minimum(ubs_avoid, 1 - aps_avoid)
+    lbs_avoid = torch.clamp(lbs_avoid, min=-aps_avoid)
+    ubs_avoid = torch.clamp(ubs_avoid, max=1-aps_avoid)
 
-    lbs_reach = torch.maximum(lbs_reach, -aps_reach)
-    ubs_reach = torch.minimum(ubs_reach, 1 - aps_reach)
+    lbs_reach = torch.clamp(lbs_reach, min=-aps_reach)
+    ubs_reach = torch.clamp(ubs_reach, max=1-aps_reach)
 
     return mixtures, ConfidenceInterval(aps_avoid, Bounds(lbs_avoid, ubs_avoid)), ConfidenceInterval(aps_reach, Bounds(lbs_reach, ubs_reach))

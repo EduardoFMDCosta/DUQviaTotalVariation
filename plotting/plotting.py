@@ -247,8 +247,8 @@ def plot_confidence_interval(conf_interval: ConfidenceInterval,
                              save: str = None):
 
     t = torch.arange(len(conf_interval.reference))
-    lbs = conf_interval.reference + conf_interval.lb
-    ubs = conf_interval.reference + conf_interval.ub
+    lbs = conf_interval.lb
+    ubs = conf_interval.ub
 
     plt.plot(t, lbs, linestyle='--', marker='s', color='grey')
     plt.plot(t, ubs, linestyle='--', marker='s', color='grey')
