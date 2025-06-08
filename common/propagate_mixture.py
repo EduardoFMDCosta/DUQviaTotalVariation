@@ -1,8 +1,8 @@
 import torch
-from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
+from distributions.distributions import Gaussian, GaussianMixture
 
-def propagate(f: Dynamics,
+def propagate_mixture(f: Dynamics,
               weights: torch.Tensor,
               locs: torch.Tensor,
               noise_distribution: Gaussian):
