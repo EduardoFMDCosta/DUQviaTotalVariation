@@ -1,76 +1,128 @@
 import torch
 from typing import Union
-from itertools import accumulate
-from common.propagate_mixture import propagate
-from total_variation.bounds import compute_bound_tv, get_objective_tv_bound
+from common.bounds import Bounds, ConfidenceInterval
+from common.propagate_mixture import propagate_mixture
 from distributions.distributions import Gaussian, GaussianMixture
 from dynamics.dynamics import Dynamics
-from grid.regions import HyperRectangularPartition
-from grid.utils import get_shell, get_shell_loc, uniform_grid
-from plotting.plotting import plot_partition
+from grid.regions import HyperRectangularPartition, AvoidHyperRectangle, ReachHyperRectangle
+from grid.utils import get_shell_loc, uniform_grid, get_high_prob_set, propagate_high_prob_set
+from plotting.plotting import plot_partition, plot_partition_bounds
+from total_variation.bounds import get_objective_tv_bound, compute_bound_tv
 
-def propagate_mixture_tv_bounds(f: Dynamics,
-                                initial_distribution: Union[Gaussian, GaussianMixture],
-                                noise_distribution: Gaussian,
-                                initial_grid_size: int = 10,
-                                prediction_horizon: int = 2,
-                                num_samples: int = 1000,
-                                plot_grid: bool = True):
 
-    tv_bounds = [0.0]
-    mixtures = []
-    probs = None
-    partition = None
+def propagate_tv(f: Dynamics,
+                 initial_distribution: Union[Gaussian, GaussianMixture],
+                 noise_distribution: Gaussian,
+                 shell: torch.Tensor,
+                 avoid_sets: AvoidHyperRectangle,
+                 reach_sets: ReachHyperRectangle,
+                 grid_size: int = 10,
+                 prediction_horizon: int = 2,
+                 num_samples: int = 1000,
+                 plot: bool = True,
+                 **kwargs):
+    # Parameters
+    num_avoid_sets = avoid_sets.lower.shape[0]
+    num_reach_sets = reach_sets.lower.shape[0]
 
-    for t in range(prediction_horizon + 1):
+    # Initialize coarse partition
+    loc_shell = get_shell_loc(shell)
+    inner_partition = uniform_grid(shell[0], shell[1], grid_size)
+    partition = HyperRectangularPartition(inner_partition=inner_partition,
+                                          avoid_sets=avoid_sets,
+                                          reach_sets=reach_sets,
+                                          loc_shell=loc_shell,
+                                          shell=shell)
 
-        if t == 0:
-            mixture_distribution = initial_distribution
-        else:
-            mixture_distribution = propagate(f, probs, partition.locs, noise_distribution)
+    # Initialize mixture
+    mixture_distribution = initial_distribution
+    mixtures = [mixture_distribution]
+
+    # High probability set
+    hpr = get_high_prob_set(mixture_distribution)
+
+    # Refine initial partition
+    objective = get_objective_tv_bound(mixture=mixture_distribution)
+    partition = partition.refine(objective=objective,
+                                 contributions=mixture_distribution.compute_probabilities(partition),
+                                 avoid_sets=avoid_sets,
+                                 reach_sets=reach_sets,
+                                 target=0.005,
+                                 max_regions=5000)
+    if plot:
+        plot_partition(partition=partition, avoid_sets=avoid_sets, reach_sets=reach_sets, high_prob_set=hpr)
+
+    # Compute mixture weights
+    probs = mixture_distribution.compute_probabilities(partition)
+
+    # Initialize bounds
+    lbs_avoid,  ubs_avoid = [0.0], [0.0]
+    lbs_reach, ubs_reach = [0.0], [0.0]
+
+    # Bound trajectories
+    aps_avoid = [mixture_distribution.compute_probabilities(avoid_sets).sum()]
+    aps_reach = [mixture_distribution.compute_probabilities(reach_sets).sum()]
+
+    for t in range(prediction_horizon):
+
+        mixture_distribution = propagate_mixture(f, probs, partition.locs, noise_distribution)
+
+        # Initialize coarse grid
+        inner_partition = uniform_grid(shell[0], shell[1], grid_size)
+        next_partition = HyperRectangularPartition(inner_partition=inner_partition,
+                                                   avoid_sets=avoid_sets,
+                                                   reach_sets=reach_sets,
+                                                   loc_shell=loc_shell,
+                                                   shell=shell)
+
+        # Refinement
+        objective = get_objective_tv_bound(mixture=mixture_distribution)
+        next_partition = next_partition.refine(objective=objective,
+                                               contributions=mixture_distribution.compute_probabilities(next_partition),
+                                               avoid_sets=avoid_sets,
+                                               reach_sets=reach_sets,
+                                               target=0.005,
+                                               max_regions=5000)
 
         mixtures.append(mixture_distribution)
         samples = mixture_distribution(num_samples)
 
-        if t < prediction_horizon:
-            shell = get_shell(samples)
-            loc_shell = get_shell_loc(shell)
+        aps_avoid.append(mixture_distribution.compute_probabilities(avoid_sets).sum())
+        aps_reach.append(mixture_distribution.compute_probabilities(reach_sets).sum())
 
-            inner_partition = uniform_grid(shell[0], shell[1], initial_grid_size)
-            partition = HyperRectangularPartition(inner_partition, loc_shell, shell)
-            if plot_grid:
-                plot_partition(partition)
+        contributions, tv = compute_bound_tv(f=f,
+                                             mixture=mixture_distribution,
+                                             noise_distribution=noise_distribution,
+                                             partition=partition)
 
-            contributions, tv_bound = compute_bound_tv(f=f,
-                                                       mixture=mixture_distribution,
-                                                       noise_distribution=noise_distribution,
-                                                       partition=partition)
+        # Update partition
+        partition = next_partition
 
-            # Refinement
-            objective = get_objective_tv_bound(f=f,
-                                               mixture=mixture_distribution,
-                                               noise_distribution=noise_distribution)
+        # Update high probability set
+        hpr = propagate_high_prob_set(f=f, hpr=hpr, noise_distribution=noise_distribution)
+        if plot:
+            plot_partition(partition=partition, avoid_sets=avoid_sets, reach_sets=reach_sets, high_prob_set=hpr)
 
-            # TODO: Change refinement to deal with mixture probs (see new method)
-            partition = partition.refine(objective=objective,
-                                         contributions=contributions,
-                                         target=0.02,
-                                         pareto=0.3,
-                                         max_regions=5000)
-            if plot_grid:
-                plot_partition(partition)
+        # Update weights
+        probs = mixture_distribution.compute_probabilities(partition)
 
-            probs = mixture_distribution.compute_probabilities(partition)
-            contributions, tv_bound = compute_bound_tv(f=f,
-                                                       mixture=mixture_distribution,
-                                                       noise_distribution=noise_distribution,
-                                                       partition=partition)
+        lbs_avoid.append(-tv.item())
+        ubs_avoid.append(tv.item())
 
-            tv_bounds.append(tv_bound.item())
+        lbs_reach.append(-tv.item())
+        ubs_reach.append(tv.item())
 
+        print(f'Partition size: {partition.lower.shape[0]}')
         print(f'End of computing for t={t}')
 
-    # TV_{t+1} = min(TV_t + bound, 1)
-    tv_bounds = [min(1, tv) for tv in accumulate(tv_bounds)]
+    lbs_avoid, aps_avoid, ubs_avoid = torch.tensor(lbs_avoid), torch.tensor(aps_avoid), torch.tensor(ubs_avoid)
+    lbs_reach, aps_reach, ubs_reach = torch.tensor(lbs_reach), torch.tensor(aps_reach), torch.tensor(ubs_reach)
 
-    return mixtures, tv_bounds
+    # Clamping for valid probability bounds
+    lbs_avoid = torch.maximum(lbs_avoid, -aps_avoid)
+    ubs_avoid = torch.minimum(ubs_avoid, 1 - aps_avoid)
+
+    lbs_reach = torch.maximum(lbs_reach, -aps_reach)
+    ubs_reach = torch.minimum(ubs_reach, 1 - aps_reach)
+
+    return mixtures, ConfidenceInterval(aps_avoid, Bounds(lbs_avoid, ubs_avoid)), ConfidenceInterval(aps_reach, Bounds(lbs_reach, ubs_reach))
