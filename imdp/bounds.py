@@ -3,8 +3,8 @@ from typing import Union
 from distributions.distributions import GaussianMixture, Gaussian
 from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangle, HyperRectangularPartition
-from targeted_probability.transition_kernel import bound_transition_kernel, transition_kernel
-from targeted_probability.utils import o_maximization
+from imdp.transition_kernel import bound_transition_kernel, transition_kernel
+from imdp.utils import o_maximization
 
 PRECISION = torch.finfo(torch.float32).eps
 

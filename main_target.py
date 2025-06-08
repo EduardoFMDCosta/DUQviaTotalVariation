@@ -5,7 +5,7 @@ from configs.handlers import parse_arguments, load_params
 from dynamics.dynamics import get_dynamics
 from grid.obstacles import compute_hitting_prob
 from plotting.plotting import plot_confidence_interval, plot_samples
-from targeted_probability.propagation import propagate_mixture_targeted_bounds
+from imdp.propagation import propagate_mixture_targeted_bounds
 
 if __name__ == '__main__':
     torch.manual_seed(0)
@@ -22,7 +22,7 @@ if __name__ == '__main__':
         dynamics_type="LinearDynamics",
         num_dims=2,
         dynamics_setting=0,
-        prediction_horizon=20,
+        prediction_horizon=30,
         num_samples=5000,
         plot=True
     )

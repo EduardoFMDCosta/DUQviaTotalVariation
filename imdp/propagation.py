@@ -6,7 +6,7 @@ from dynamics.dynamics import Dynamics
 from grid.regions import HyperRectangularPartition, AvoidHyperRectangle, ReachHyperRectangle
 from grid.utils import get_shell_loc, uniform_grid, get_high_prob_set, propagate_high_prob_set
 from plotting.plotting import plot_partition, plot_partition_bounds
-from targeted_probability.bounds import compute_targeted_bound, TargetedBounds, get_objective_targeted
+from imdp.bounds import compute_targeted_bound, TargetedBounds, get_objective_targeted
 
 def propagate_mixture_targeted_bounds(f: Dynamics,
                                       initial_distribution: Union[Gaussian, GaussianMixture],
