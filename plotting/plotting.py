@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
-from grid.regions import HyperRectangularPartition, HyperRectangle
+from grid.regions import HyperRectangularPartition, HyperRectangle, AvoidHyperRectangle, ReachHyperRectangle
 import matplotlib.patches as patches
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
@@ -115,12 +115,13 @@ def plot_samples(monte_carlo_samples: torch.Tensor,
             plt.show()
 
 def plot_partition(partition: HyperRectangularPartition,
+                   avoid_sets: AvoidHyperRectangle,
+                   reach_sets: ReachHyperRectangle,
                    high_prob_set: HyperRectangle = None):
 
     inner_partition = partition.inner_partition
     lower = inner_partition.lower
     upper = inner_partition.upper
-    safety_type = partition.safety_type
 
     if lower.shape[-1] == 1:
         fig, ax = plt.subplots()
@@ -139,16 +140,38 @@ def plot_partition(partition: HyperRectangularPartition,
         fig, ax = plt.subplots()
         ax.set_facecolor('lightgrey')
 
-        unique_types = np.unique(safety_type)
-        face_color = {0: 'lightgrey', -1: 'red', 1: 'green'}
-        edge_color = {0: 'grey', -1: 'red', 1: 'green'}
-
         # Loop over rectangles
-        for lo, hi, t in zip(lower, upper, safety_type):
+        for lo, hi in zip(lower, upper):
             width = hi[0] - lo[0]
             height = hi[1] - lo[1]
-            rect = patches.Rectangle(lo, width, height, linewidth=1, edgecolor=edge_color[t.item()], facecolor=face_color[t.item()], alpha=0.5)
+            rect = patches.Rectangle(lo, width, height, linewidth=1, edgecolor='grey', facecolor='lightgrey', alpha=0.5)
             ax.add_patch(rect)
+
+        # Plot unsafe sets if provided
+        if avoid_sets is not None:
+            lower_avoid = avoid_sets.lower.cpu().numpy()
+            upper_avoid = avoid_sets.upper.cpu().numpy()
+            for l, u in zip(lower_avoid, upper_avoid):
+                width, height = u[0] - l[0], u[1] - l[1]
+                rect = patches.Rectangle((l[0], l[1]), width, height,
+                                            linewidth=1.5,
+                                            edgecolor='r',
+                                            facecolor='red',
+                                            alpha=0.4)
+                ax.add_patch(rect)
+
+        # Plot reach sets if provided
+        if reach_sets is not None:
+            lower_reach = reach_sets.lower.cpu().numpy()
+            upper_reach = reach_sets.upper.cpu().numpy()
+            for l, u in zip(lower_reach, upper_reach):
+                width, height = u[0] - l[0], u[1] - l[1]
+                rect = patches.Rectangle((l[0], l[1]), width, height,
+                                            linewidth=1.5,
+                                            edgecolor='g',
+                                            facecolor='green',
+                                            alpha=0.4)
+                ax.add_patch(rect)
 
         if high_prob_set is not None:
             # --- Add high probability rectangles ---
