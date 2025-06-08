@@ -7,7 +7,6 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import numpy.ma as ma
 from matplotlib.colors import ListedColormap
-
 from targeted_probability.bounds import TargetedBounds
 
 plt.style.use('seaborn-v0_8-bright')
