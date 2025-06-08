@@ -140,10 +140,10 @@ def propagate_imdp(f: Dynamics,
     lbs_reach, aps_reach, ubs_reach = torch.tensor(lbs_reach), torch.tensor(aps_reach), torch.tensor(ubs_reach)
 
     # Clamping for valid probability bounds
-    lbs_avoid = torch.maximum(lbs_avoid, -aps_avoid)
-    ubs_avoid = torch.minimum(ubs_avoid, 1-aps_avoid)
+    lbs_avoid = torch.clamp(lbs_avoid, min=-aps_avoid)
+    ubs_avoid = torch.clamp(ubs_avoid, max=1-aps_avoid)
 
-    lbs_reach = torch.maximum(lbs_reach, -aps_reach)
-    ubs_reach = torch.minimum(ubs_reach, 1-aps_reach)
+    lbs_reach = torch.clamp(lbs_reach, min=-aps_reach)
+    ubs_reach = torch.clamp(ubs_reach, max=1-aps_reach)
 
     return mixtures, ConfidenceInterval(aps_avoid, Bounds(lbs_avoid, ubs_avoid)), ConfidenceInterval(aps_reach, Bounds(lbs_reach, ubs_reach))
