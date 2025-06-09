@@ -5,11 +5,11 @@ from dynamics.dynamics import Dynamics
 
 
 def simulate_monte_carlo(f: Dynamics,
-                initial_distribution: Union[Gaussian, GaussianMixture],
-                noise_distribution: Gaussian,
-                prediction_horizon: int,
-                num_samples: int,
-                **kwargs):
+                         initial_distribution: Union[Gaussian, GaussianMixture],
+                         noise_distribution: Gaussian,
+                         prediction_horizon: int,
+                         num_samples: int,
+                         **kwargs):
 
     samples = initial_distribution(num_samples)
 

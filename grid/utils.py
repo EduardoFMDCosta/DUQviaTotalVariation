@@ -2,7 +2,9 @@ import torch
 import itertools
 import bound_propagation as bp
 from grid.regions import HyperRectangle
-from dynamics.dynamics import Dynamics, factory
+from dynamics.dynamics import Dynamics
+
+from interval_bp import factory
 
 def get_shell_loc(macro_region: torch.Tensor):
     dimensions = macro_region.size(1)
@@ -57,6 +59,6 @@ def propagate_high_prob_set(f: Dynamics,
     net = factory.build(f)
     propagated_hpr = net.ibp(bp.HyperRectangle(lower=hpr.lower, upper=hpr.upper))
 
-    radius = 3 * torch.sqrt(torch.diagonal(noise_distribution.covariance)).unsqueeze(0)
+    radius = 3 * torch.sqrt(torch.diagonal(noise_distribution.covariance_matrix)).unsqueeze(0)
 
     return HyperRectangle(propagated_hpr.lower-radius, propagated_hpr.upper+radius) # Minkowski sum

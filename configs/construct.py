@@ -14,7 +14,7 @@ def get_noise_dist(loc_noise_dist, variance_noise_dist, **kwargs):
 def construct_diag_gaussian_dist(loc_dist, variance_dist):
     loc_dist = torch.as_tensor(loc_dist)
     covariance_dist = torch.diag(torch.as_tensor(variance_dist))
-    return Gaussian(mean=loc_dist, cov=covariance_dist)
+    return Gaussian(loc_dist, covariance_dist)
 
 
 def get_shell(safe_shell, **kwargs):

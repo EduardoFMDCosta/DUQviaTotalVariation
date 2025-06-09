@@ -1,10 +1,12 @@
-from typing import Union
 import torch
-from distributions.distributions import gaussian_probabilities
-from dynamics.dynamics import Dynamics, factory
-from grid.regions import HyperRectangularPartition, HyperRectangle
+from typing import Union
 import bound_propagation as bp
 import torch.distributions as dist
+from dynamics.dynamics import Dynamics
+from distributions.distributions import gaussian_probabilities
+from grid.regions import HyperRectangularPartition, HyperRectangle
+
+from interval_bp import factory
 
 def transition_kernel(f: Dynamics,
                       locs: torch.tensor,

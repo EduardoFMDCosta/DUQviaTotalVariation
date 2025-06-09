@@ -1,54 +1,38 @@
 import torch
-from abc import abstractmethod
 from typing import Union
-from torch.distributions import MultivariateNormal
+import discretize_distributions as ds
+from torch.distributions.normal import Normal
 from grid.regions import HyperRectangularPartition, HyperRectangle
 
-
-class Distributions:
-    def __call__(self, *args, **kwargs):
-        pass
-
-    @abstractmethod
-    def compute_probabilities(self,
-                              regions: Union[HyperRectangularPartition, HyperRectangle, torch.Tensor]):
-        pass
-
-
-class Gaussian(Distributions):
-    def __init__(self, mean: torch.Tensor, cov: torch.Tensor):
-        self.mean = mean
-        self.covariance = cov
+class Gaussian(ds.MultivariateNormal):
+    def __init__(self, mean: torch.Tensor, covariance_matrix: torch.Tensor):
+        super().__init__(loc=mean, covariance_matrix=covariance_matrix)
 
     def __call__(self, num_samples: int):
-        mvn = MultivariateNormal(loc=self.mean,
-                                 covariance_matrix=self.covariance)
-        return mvn.sample((num_samples,))
+        return self.sample((num_samples,))
 
-    def compute_probabilities(self,
-                              regions: Union[HyperRectangularPartition, HyperRectangle]):
-        return gaussian_probabilities(mean=self.mean,
-                                      covariance=self.covariance,
+    def compute_probabilities(self, regions: Union[HyperRectangularPartition, HyperRectangle]):
+        return gaussian_probabilities(mean=self.loc,
+                                      covariance=self.covariance_matrix,
                                       regions=regions)
 
 
-class GaussianMixture(Distributions):
-    def __init__(self, means: torch.Tensor, covariance: torch.Tensor, weights: torch.Tensor):
-        self.means = means
-        self.covariance = covariance
-        self.weights = weights
+class GaussianMixture(ds.MixtureMultivariateNormal):
+    def __init__(self, means: torch.Tensor, covariance_matrix: torch.Tensor, weights: torch.Tensor):
+        super().__init__(mixture_distribution=torch.distributions.Categorical(probs=weights),
+                         component_distribution=ds.MultivariateNormal(loc=means, covariance_matrix=covariance_matrix))
 
     def __call__(self, num_samples: int):
-        chosen_components = torch.multinomial(self.weights, num_samples, replacement=True)
-        gaussian_distributions = MultivariateNormal(self.means, self.covariance)
+        chosen_components = torch.multinomial(self.mixture_distribution.probs, num_samples, replacement=True)
+        gaussian_distributions = ds.MultivariateNormal(self.component_distribution.loc, self.component_distribution.covariance_matrix)
         samples = gaussian_distributions.sample((num_samples,))
         return samples[torch.arange(num_samples), chosen_components]
 
     def compute_probabilities(self, regions):
-        probs = gaussian_probabilities(mean=self.means,
-                                       covariance=self.covariance,
+        probs = gaussian_probabilities(mean=self.component_distribution.loc,
+                                       covariance=self.component_distribution.covariance_matrix,
                                        regions=regions)
-        return torch.sum(probs * self.weights.unsqueeze(1), dim=0)
+        return torch.sum(probs * self.mixture_distribution.probs.unsqueeze(1), dim=0)
 
 
 ### Auxiliary methods
@@ -57,14 +41,17 @@ def gaussian_probabilities(mean: torch.Tensor,
                            regions: Union[HyperRectangularPartition, HyperRectangle, torch.Tensor]):
     lower = regions.lower
     upper = regions.upper
-
-    sigma = torch.sqrt(torch.diag(covariance))
+    sigma = torch.sqrt(covariance.diagonal(dim1=-2, dim2=-1))
 
     if mean.dim() == 1:
         mean = mean.unsqueeze(0)
+        sigma = sigma.unsqueeze(0)
 
-    lower_norm = (lower.unsqueeze(0) - mean.unsqueeze(1)) / sigma
-    upper_norm = (upper.unsqueeze(0) - mean.unsqueeze(1)) / sigma
+    if sigma.dim() == 1:
+        sigma = sigma.unsqueeze(0).expand_as(mean)
+
+    lower_norm = (lower.unsqueeze(0) - mean.unsqueeze(1)) / sigma.unsqueeze(1)
+    upper_norm = (upper.unsqueeze(0) - mean.unsqueeze(1)) / sigma.unsqueeze(1)
 
     normal = torch.distributions.Normal(0.0, 1.0)
     lower_cdf = normal.cdf(lower_norm)
@@ -76,8 +63,8 @@ def gaussian_probabilities(mean: torch.Tensor,
         probs[:, -1] = 1 - torch.sum(probs[:, :-1], dim=1)  # Last region represents the complement of shell
 
     if probs.shape[0] == 1:
-        probs = probs.squeeze(0) # Squeeze it back to (n,) if means represent a sole Gaussian
+        probs = probs.squeeze(0)  # Squeeze it back to (n,) if means represent a sole Gaussian
 
-    probs.clamp_(min=0.0, max=1.0) # avoid numerical issues
+    probs.clamp_(min=0.0, max=1.0)  # avoid numerical issues
 
     return probs

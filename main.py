@@ -1,33 +1,27 @@
 import torch
-from common.monte_carlo import simulate_monte_carlo, simulate_mixtures
-from configs.construct import get_initial_dist, get_noise_dist, get_shell, get_avoid_sets, get_reach_sets
-from configs.handlers import parse_arguments, load_params
+from common.enums import BoundType
+from common.propagate import propagate
 from dynamics.dynamics import get_dynamics
 from grid.obstacles import compute_hitting_prob
 from plotting.plotting import plot_confidence_interval, plot_samples
-from imdp.propagation import propagate_mixture_targeted_bounds
+from common.monte_carlo import simulate_monte_carlo, simulate_mixtures
+from configs.handlers import parse_arguments, load_params
+from configs.construct import get_initial_dist, get_noise_dist, get_shell, get_avoid_sets, get_reach_sets
 
 if __name__ == '__main__':
     torch.manual_seed(0)
-    
-    # args = parse_arguments(
-    #     dynamics_type="DubinsCarDynamics",
-    #     num_dims=3,
-    #     dynamics_setting=0,
-    #     prediction_horizon=15,
-    #     num_samples=5000, 
-    #     plot=False
-    # )
+
+    bound_type = BoundType.TV
+
     args = parse_arguments(
         dynamics_type="LinearDynamics",
         num_dims=2,
         dynamics_setting=0,
         prediction_horizon=30,
         num_samples=5000,
-        plot=True
+        plot=False
     )
     params = load_params(args)
-
 
     dynamics = get_dynamics(**params)
     initial_distribution = get_initial_dist(**params)
@@ -38,13 +32,15 @@ if __name__ == '__main__':
     avoid_sets = get_avoid_sets(**params)
     reach_sets = get_reach_sets(**params)
 
-    mixtures, aps_avoid, lbs_avoid, ubs_avoid, aps_reach, lbs_reach, ubs_reach = propagate_mixture_targeted_bounds(f=dynamics,
-                                      initial_distribution=initial_distribution,
-                                      noise_distribution=noise_distribution,
-                                      shell=shell,
-                                      avoid_sets=avoid_sets,
-                                      reach_sets=reach_sets,
-                                      **params)
+    mixtures, avoid_bounds, reach_bounds = propagate(
+        f=dynamics,
+        initial_distribution=initial_distribution,
+        noise_distribution=noise_distribution,
+        shell=shell,
+        avoid_sets=avoid_sets,
+        reach_sets=reach_sets,
+        bound_type=bound_type,
+        **params)
 
     monte_carlo_samples = simulate_monte_carlo(f=dynamics,
                                                initial_distribution=initial_distribution,
@@ -53,11 +49,11 @@ if __name__ == '__main__':
 
     hitting_probs_mc = compute_hitting_prob(samples=monte_carlo_samples,
                                             avoid_sets=avoid_sets)
-    plot_confidence_interval(aps_avoid, lbs_avoid, ubs_avoid, hitting_probs_mc)
+    plot_confidence_interval(avoid_bounds, hitting_probs_mc)
 
     reach_probs_mc = compute_hitting_prob(samples=monte_carlo_samples,
                                           avoid_sets=reach_sets)
-    plot_confidence_interval(aps_reach, lbs_reach, ubs_reach, reach_probs_mc)
+    plot_confidence_interval(reach_bounds, reach_probs_mc)
 
     gmm_samples = simulate_mixtures(mixtures=mixtures,
                                     **params)
@@ -66,5 +62,5 @@ if __name__ == '__main__':
 
     plot_samples(monte_carlo_samples=monte_carlo_samples,
                  gmm_samples=gmm_samples,
-                 avoid_sets=avoid_sets, 
+                 avoid_sets=avoid_sets,
                  reach_sets=reach_sets)
