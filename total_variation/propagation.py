@@ -48,7 +48,7 @@ def propagate_tv(f: Dynamics,
                                  contributions=mixture_distribution.compute_probabilities(partition),
                                  avoid_sets=avoid_sets,
                                  reach_sets=reach_sets,
-                                 target=0.005,
+                                 target=0.001,
                                  max_regions=5000)
     if plot:
         plot_partition(partition=partition, avoid_sets=avoid_sets, reach_sets=reach_sets, high_prob_set=hpr)
@@ -66,6 +66,11 @@ def propagate_tv(f: Dynamics,
 
     for t in range(prediction_horizon):
 
+        contributions, tv = compute_bound_tv(f=f,
+                                             mixture=mixture_distribution,
+                                             noise_distribution=noise_distribution,
+                                             partition=partition)
+
         mixture_distribution = propagate_mixture(f, probs, partition.locs, noise_distribution)
 
         # Initialize coarse grid
@@ -82,7 +87,7 @@ def propagate_tv(f: Dynamics,
                                                contributions=mixture_distribution.compute_probabilities(next_partition),
                                                avoid_sets=avoid_sets,
                                                reach_sets=reach_sets,
-                                               target=0.005,
+                                               target=0.001,
                                                max_regions=5000)
 
         mixtures.append(mixture_distribution)
@@ -90,11 +95,6 @@ def propagate_tv(f: Dynamics,
 
         aps_avoid.append(mixture_distribution.compute_probabilities(avoid_sets).sum())
         aps_reach.append(mixture_distribution.compute_probabilities(reach_sets).sum())
-
-        contributions, tv = compute_bound_tv(f=f,
-                                             mixture=mixture_distribution,
-                                             noise_distribution=noise_distribution,
-                                             partition=partition)
 
         # Update partition
         partition = next_partition
