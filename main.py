@@ -11,7 +11,7 @@ from configs.construct import get_initial_dist, get_noise_dist, get_shell, get_a
 if __name__ == '__main__':
     torch.manual_seed(0)
 
-    bound_type = BoundType.TV
+    bound_type = BoundType.IMDP
 
     args = parse_arguments(
         dynamics_type="LinearDynamics",
