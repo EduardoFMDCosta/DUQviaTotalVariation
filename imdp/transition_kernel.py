@@ -109,3 +109,8 @@ def bound_transition_kernel(f: Dynamics,
                                                                                         target=partition.shell).reshape(-1)
 
     return kernel_bounds
+
+def compose_transition_kernel(current_kernel: torch.Tensor,
+                              step_kernel: torch.Tensor):
+
+    return torch.einsum('nm,mk->nk', current_kernel, step_kernel)
