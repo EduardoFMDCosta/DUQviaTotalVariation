@@ -19,7 +19,7 @@ if __name__ == '__main__':
         dynamics_setting=0,
         prediction_horizon=30,
         num_samples=5000,
-        plot=False
+        plot=True
     )
     params = load_params(args)
 
